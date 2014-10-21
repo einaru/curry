@@ -86,6 +86,10 @@ def main():
         provider = Provider(**kwargs)
         rate = provider.get_exchange_rate(args._from, args.to)
 
+        # TODO:2014-10-21:einar: better feedback on error?
+        if rate <= 0:
+            return 1
+
         print('{:.2f}'.format(rate * args.amount))
 
         if args.save:

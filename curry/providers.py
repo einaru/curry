@@ -6,6 +6,7 @@
 """
 import json
 import logging
+import urllib.error
 import urllib.request
 
 log = logging.getLogger(__name__)
@@ -51,7 +52,13 @@ class Provider:
         if not self.api:
             raise ApiError('No Api provider is set!')
 
-        return self.api.get_exchange_rate(_from, to)
+        rate = -1
+        try:
+            rate = self.api.get_exchange_rate(_from, to)
+        except urllib.error.HTTPError as e:
+            log.error(e)
+
+        return rate
 
 
 class ApiError(Exception):
@@ -73,10 +80,11 @@ class ProviderApi:
 
 
 class Yahoo(ProviderApi):
-    url = 'http://download.finance.yahoo.com/d/quotes.csv?s={f}{t}=X&f=l1&e=.cs'
+    _id = 'finance.yahoo.com'
+    url = 'http://download.finance.yahoo.com/d/quotes.csv?s={}{}=X&f=l1&e=.cs'
 
     def get_exchange_rate(self, _from, to):
-        req_url = self.url.format(f=_from, t=to)
+        req_url = self.url.format(_from, to)
         log.debug('request url: {}'.format(req_url))
 
         # FIXME:2014-10-21:einar: response value is of type 'bytes'
@@ -87,21 +95,20 @@ class Yahoo(ProviderApi):
             rate = float(res)
         except ValueError as e:
             log.error(e)
-            raise ApiError(6, 'Unkown error occured')
 
         # TODO:2014-10-21:einar: add better error handling for yahoo api
         return rate
 
 
-register_api_provider('finance.yahoo.com', Yahoo)
+register_api_provider(Yahoo._id, Yahoo)
 
 
 class ExchangeRateApi(ProviderApi):
-
-    url = 'http://www.exchangerate-api.com/{f}/{t}?k={k}'
+    _id = 'exchangerate-api.com'
+    url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
     def get_exchange_rate(self, _from, to):
-        req_url = self.url.format(f=_from, t=to, k=self.api_key)
+        req_url = self.url.format(_from, to, self.api_key)
         log.debug('request url: {}'.format(req_url))
         res = urllib.request.urlopen(req_url).read()
 
@@ -110,7 +117,6 @@ class ExchangeRateApi(ProviderApi):
         except ValueError as e:
             log.error(e)
 
-        # FIXME:2014-10-21:einar: update API error handling
         if rate == -1:
             raise ApiError('Invalid amount used')
         if rate == -2:
@@ -125,19 +131,19 @@ class ExchangeRateApi(ProviderApi):
         return rate
 
 
-register_api_provider('exchangerate-api.com', ExchangeRateApi, ['api_key'])
+register_api_provider(ExchangeRateApi._id, ExchangeRateApi, ['api_key'])
 
 
 class RateExchange(ProviderApi):
-    url = 'http://rate-exchange.appspot.com/currency?from={f}&to={t}'
+    _id = 'rate-exchange.appspot.com'
+    url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
     def get_exchange_rate(self, _from, to):
-        req_url = self.url.format(f=_from, t=to)
+        req_url = self.url.format(_from, to)
         log.debug('request url: {}'.format(req_url))
         json_res = urllib.request.urlopen(req_url).read()
 
         # Post process JSON response
-        # FIXED:2014-10-21:einar: response value is of type 'bytes'
         res = json.loads(json_res.decode('utf-8'))
         log.debug('got json response: {}'.format(res))
 
@@ -153,4 +159,4 @@ class RateExchange(ProviderApi):
         return rate
 
 
-register_api_provider('rate-exchange.appspot.com', RateExchange)
+register_api_provider(RateExchange._id, RateExchange)
