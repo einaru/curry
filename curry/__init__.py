@@ -1,4 +1,4 @@
-version = '0.1'
+version = '0.2'
 prog_name = 'curry'
 author = 'Einar Uvsløkk'
 author_email = 'einar.uvslokk@gmail.com'
