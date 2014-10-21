@@ -1,0 +1,5 @@
+version = '0.1'
+prog_name = 'curry'
+author = 'Einar Uvsløkk'
+author_email = 'einar.uvslokk@gmail.com'
+description_cli = 'Command-line currency converter.'
