@@ -1,6 +1,6 @@
 # Curry
 
-A currency converter for the gnome 3.
+A command-line, and Gtk3, currency converter.
 
 
 ## License

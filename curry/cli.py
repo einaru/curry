@@ -8,7 +8,7 @@ import sys
 import logging
 import argparse
 
-from curry import prog_name, version, description_cli
+from curry import prog_name, version, description
 from curry.config import Config
 from curry.providers import Provider, ApiError, list_api_providers
 
@@ -25,7 +25,7 @@ def parse_command_line(argv, **defaults):
     """Parses the command line arguments, and setup logging level."""
 
     parser = argparse.ArgumentParser(prog=prog_name,
-                                     description=description_cli)
+                                     description=description)
 
     parser.add_argument('_from', metavar='from',
                         help='currency to convert from')

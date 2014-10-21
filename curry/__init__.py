@@ -1,5 +1,5 @@
-version = '0.1'
+version = '0.2'
 prog_name = 'curry'
 author = 'Einar Uvsløkk'
 author_email = 'einar.uvslokk@gmail.com'
-description_cli = 'Command-line currency converter.'
+description = 'A command-line, and Gtk3, currency converter'
