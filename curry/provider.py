@@ -4,10 +4,15 @@
 
     Copyright: (c) 2014 Einar Uvsløkk
 """
+import os
 import json
 import logging
 import urllib.error
 import urllib.request
+import time
+import requests
+
+from curry.config import cache_path
 
 log = logging.getLogger(__name__)
 
@@ -39,9 +44,8 @@ class Provider:
     def use_api(self, **kwargs):
         assert 'api' in kwargs
         api = kwargs.pop('api')
-        log.debug('trying to use api: {}'.format(api))
         if api not in Providers:
-            raise ApiError('Unknown API provider: {}'.format(api))
+            raise APIError('Unknown API provider: {}'.format(api))
 
         if self.api:
             log.info('switching API provider: {} -> {}'.format(self.api, api))
@@ -50,23 +54,27 @@ class Provider:
 
     def get_exchange_rate(self, _from, to):
         if not self.api:
-            raise ApiError('No Api provider is set!')
+            raise APIError('No API provider is set!')
 
         rate = -1
         try:
             rate = self.api.get_exchange_rate(_from, to)
+        # XXX:2014-10-22:einar: might to HTTP error handling more granular?
         except urllib.error.HTTPError as e:
             log.error(e)
 
         return rate
 
 
-class ApiError(Exception):
-    def __init__(self, message):
+class APIError(Exception):
+    def __init__(self, message, _id=None):
         self.message = message
+        self._id = _id
 
     def __str__(self):
-        return 'ApiError: {}'.format(self.message)
+        if self._id:
+            return 'APIError: ({}) {}'.format(self._id, self.message)
+        return 'APIError: {}'.format(self.message)
 
 
 class APIProvider:
@@ -103,7 +111,7 @@ class Yahoo(APIProvider):
 register_api_provider(Yahoo._id, Yahoo)
 
 
-class ExchangeRateApi(APIProvider):
+class ExchangeRateAPI(APIProvider):
     _id = 'exchangerate-api.com'
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
@@ -118,20 +126,20 @@ class ExchangeRateApi(APIProvider):
             log.error(e)
 
         if rate == -1:
-            raise ApiError('Invalid amount used')
+            raise APIError('Invalid amount used')
         if rate == -2:
-            raise ApiError('Invalid currency code: {} -> {}'.format(_from, to))
+            raise APIError('Invalid currency code: {} -> {}'.format(_from, to))
         if rate == -3:
-            raise ApiError('Invalid API key: {}'.format(self.api_key))
+            raise APIError('Invalid API key: {}'.format(self.api_key))
         if rate == -4:
-            raise ApiError('API query limit reached')
+            raise APIError('API query limit reached')
         if rate == -5:
-            raise ApiError('Unresolved IP address used')
+            raise APIError('Unresolved IP address used')
 
         return rate
 
 
-register_api_provider(ExchangeRateApi._id, ExchangeRateApi, ['api_key'])
+register_api_provider(ExchangeRateAPI._id, ExchangeRateAPI, ['api_key'])
 
 
 class RateExchange(APIProvider):
@@ -151,12 +159,118 @@ class RateExchange(APIProvider):
             rate = float(res['rate'])
         except KeyError as ke:
             log.error(ke)
-            raise ApiError('Unable to extract rate key from json response')
+            raise APIError('Unable to extract rate key from json response')
         except ValueError as ve:
             log.error(ve)
-            raise ApiError('Unable to convert response rate to float')
+            raise APIError('Unable to convert response rate to float')
 
         return rate
 
 
 register_api_provider(RateExchange._id, RateExchange)
+
+
+class OpenExchangeRates(APIProvider):
+    _id = 'openexchangerates.org'
+    url = 'http://openexchangerates.org/api/latest.json?app_id={}'
+
+    def __init__(self, api_key):
+        APIProvider.__init__(self, api_key)
+        self.cache = {}
+        self.cache_file = os.path.join(cache_path, self._id)
+        if os.path.isfile(self.cache_file):
+            with open(self.cache_file) as f:
+                self.cache = json.load(f)
+
+    def get_exchange_rate(self, _from, to):
+        self.load_cache()
+        return -1
+
+    def save_cache(self, rates, etag, last_modified):
+        """Save exchange rates as local cache.
+
+        :param rates: json encoded exchange rates
+        :param etag: doubleqouted identifier
+        :param last_modified: date string
+        """
+        self.cache = {
+            'etag': etag,
+            'last_modified': last_modified,
+            'rates': rates,
+            'time_saved': time.time()
+        }
+        with open(self.cache_file, 'w') as f:
+            f.write(json.dumps(self.cache))
+        log.info('saved cache for {}'.format(self._id))
+
+    def load_cache(self):
+        url = self.url.format(self.api_key)
+        if not self.cache:
+            # Do a regular request for latest currencies and save cache
+            status_code, rates, etag, last_modified = self._do_request(url)
+            self.save_cache(rates, etag, last_modified)
+        else:
+            # Check if our cache is up-to-date
+            cache_timeout = 60 * 60 * 24  # 24 hours
+            now = time.time()
+            if self.cache.get('time_saved') < now - cache_timeout:
+                headers = {
+                    'If-None-Match': "{}".format(self.cache.get('etag')),
+                    'If-Modified-Since': self.cache.get('last_modified'),
+                }
+
+                log.info('checking cache for "{}"'.format(self._id))
+                status_code, data = self._do_request(url, headers=headers)
+                if status_code == 304:
+                    log.info('cache is up-to-date')
+                else:
+                    # TODO:2014-10-22:einar: safe to assume status code 200?
+                    log.info('cache is out-of-date')
+                    rates, etag, last_modified = data
+                    self.save_cache(rates, etag, last_modified)
+            else:
+                log.info('keeping current cache: fresh enough')
+
+    def _do_request(self, url, headers={}):
+        log.debug('request url: {}'.format(url))
+        r = requests.get(url, headers=headers)
+        status_code = r.status_code
+
+        log.debug('*** START: Response Dump ({}) *** '.format(self._id))
+        log.debug('  status code: {}'.format(status_code))
+        log.debug('  headers:')
+        for k, v in r.headers.items():
+            log.debug('    {}: {}'.format(k, v))
+        log.debug('*** END *** ')
+
+        if status_code == 404:
+            raise APIError('Non-existent resource requested', self._id)
+        if status_code == 401:
+            message = r.json().get('message')
+            if message in ['missing_app_id', 'invalid_app_id']:
+                raise APIError('Invalid API key: {}'.format(self.api_key),
+                               self._id)
+            if message == 'not_allowed':
+                raise APIError('Not allowed to access requested feature')
+            # TODO:2014-10-22:einar: provide an else cause here?
+        if status_code == 429:
+            raise APIError('Access restricted for over-use', self._id)
+        if status_code == 403:
+            # TODO:2014-10-22:einar: use 'description' for better feedback
+            raise APIError('Access restricted', self._id)
+        if status_code == 400:
+            raise APIError('Invalid base currency', self._id)
+
+        if status_code == 200 or status_code == 304:
+            # Only return what we care about
+            rates = r.json().get('rates')
+            etag = r.headers.get('etag')
+            last_modified = r.headers.get('last_modified')
+            return status_code, rates, etag, last_modified
+        else:
+            # TODO:2014-10-22:einar: handle this one better
+            raise APIError('Received unexpected status code: {}'.format(
+                status_code), self._id)
+
+
+register_api_provider(OpenExchangeRates._id, OpenExchangeRates, ['api_key'])

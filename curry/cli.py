@@ -10,12 +10,12 @@ import argparse
 
 from curry import prog_name, version, description
 from curry.config import Config
-from curry.provider import Provider, ApiError, list_api_providers
+from curry.provider import Provider, APIError, list_api_providers
 
 log = logging.getLogger(__name__)
 
 
-class ListApiProviders(argparse.Action):
+class ListAPIProviders(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         list_api_providers()
         sys.exit(0)
@@ -39,7 +39,7 @@ def parse_command_line(argv, **defaults):
     parser.add_argument('-k', '--api-key', metavar='KEY',
                         help='use an API-key (required by some API '
                         'providers!)')
-    parser.add_argument('-l', '--list', action=ListApiProviders, nargs=0,
+    parser.add_argument('-l', '--list', action=ListAPIProviders, nargs=0,
                         help='show a list of available provider API\'s')
 
     # TODO:2014-10-21:einar: maybe save on default and provide --no-save flag?
@@ -89,6 +89,7 @@ def main():
 
         # TODO:2014-10-21:einar: better feedback on error?
         if rate <= 0:
+            log.info('Got negative exchange rate: {}'.format(rate))
             return 1
 
         print('{:.2f}'.format(rate * args.amount))
@@ -98,7 +99,7 @@ def main():
             config.set('api_key', api_key, section=api)
             config.save()
 
-    except ApiError as e:
-        log.error(e)
+    except APIError as ae:
+        log.error(ae)
     finally:
         logging.shutdown()
