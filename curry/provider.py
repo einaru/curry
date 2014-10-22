@@ -56,6 +56,7 @@ class Provider:
         if not self.api:
             raise APIError('No API provider is set!')
 
+        log.info('using API provider: {}'.format(self.api._id))
         rate = -1
         try:
             rate = self.api.get_exchange_rate(_from, to)
@@ -178,13 +179,28 @@ class OpenExchangeRates(APIProvider):
         APIProvider.__init__(self, api_key)
         self.cache = {}
         self.cache_file = os.path.join(cache_path, self._id)
+        self.base_currency = 'USD'
+        # TODO:2014-10-22:einar: refactor initial cache loading
         if os.path.isfile(self.cache_file):
             with open(self.cache_file) as f:
                 self.cache = json.load(f)
 
     def get_exchange_rate(self, _from, to):
         self.load_cache()
-        return -1
+
+        rates = self.cache.get('rates')
+        # Since no APIError is raied, we can assume that both currency
+        # codes are valid.
+        from_currency = rates.get(_from.upper())
+        to_currency = rates.get(to.upper())
+
+        if _from.upper() == self.base_currency:
+            return to_currency
+
+        if to.upper() == self.base_currency:
+            return 1 / from_currency
+
+        return from_currency * (1 / to_currency)
 
     def save_cache(self, rates, etag, last_modified):
         """Save exchange rates as local cache.
@@ -229,9 +245,17 @@ class OpenExchangeRates(APIProvider):
                     rates, etag, last_modified = data
                     self.save_cache(rates, etag, last_modified)
             else:
-                log.info('keeping current cache: fresh enough')
+                log.info('keeping current cache has not expired')
 
     def _do_request(self, url, headers={}):
+        """Runs the actual HTTP request, and handles API errors.
+
+        :param url: the request url
+        :headers: additional request headers
+
+        :returns: status code, rates, etag and the last modified field
+            on success, else an `APIError`is raised.
+        """
         log.debug('request url: {}'.format(url))
         r = requests.get(url, headers=headers)
         status_code = r.status_code
