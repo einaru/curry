@@ -7,14 +7,18 @@
 import os
 import logging
 import configparser
-from xdg import BaseDirectory
 
 from curry import prog_name
 
-__all__ = ['Config']
+try:
+    from xdg import BaseDirectory
+    config_path = BaseDirectory.save_config_path(prog_name)
+    cache_path = BaseDirectory.save_cache_path(prog_name)
+except:
+    config_path = os.path.join(os.path.expanduser('~/.config'), prog_name)
+    cache_path = os.path.join(os.path.expanduser('~/.cache'), prog_name)
 
-config_path = BaseDirectory.save_config_path(prog_name)
-cache_path = BaseDirectory.save_cache_path(prog_name)
+__all__ = ['Config']
 
 config_file = os.path.join(config_path, 'config.ini')
 
