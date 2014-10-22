@@ -10,7 +10,7 @@ import argparse
 
 from curry import prog_name, version, description
 from curry.config import Config
-from curry.providers import Provider, ApiError, list_api_providers
+from curry.provider import Provider, ApiError, list_api_providers
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +37,8 @@ def parse_command_line(argv, **defaults):
     parser.add_argument('-a', '--api', default=default_api,
                         help='get exchange rates from a given API provider')
     parser.add_argument('-k', '--api-key', metavar='KEY',
-                        help='use a given API-key (required by some API\'s!)')
+                        help='use an API-key (required by some API '
+                        'providers!)')
     parser.add_argument('-l', '--list', action=ListApiProviders, nargs=0,
                         help='show a list of available provider API\'s')
 

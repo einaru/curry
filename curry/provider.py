@@ -69,7 +69,7 @@ class ApiError(Exception):
         return 'ApiError: {}'.format(self.message)
 
 
-class ProviderApi:
+class APIProvider:
     """Super class for API providers."""
 
     def __init__(self, api_key=None):
@@ -79,7 +79,7 @@ class ProviderApi:
         """Must be implemented in every subclass."""
 
 
-class Yahoo(ProviderApi):
+class Yahoo(APIProvider):
     _id = 'finance.yahoo.com'
     url = 'http://download.finance.yahoo.com/d/quotes.csv?s={}{}=X&f=l1&e=.cs'
 
@@ -103,7 +103,7 @@ class Yahoo(ProviderApi):
 register_api_provider(Yahoo._id, Yahoo)
 
 
-class ExchangeRateApi(ProviderApi):
+class ExchangeRateApi(APIProvider):
     _id = 'exchangerate-api.com'
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
@@ -134,7 +134,7 @@ class ExchangeRateApi(ProviderApi):
 register_api_provider(ExchangeRateApi._id, ExchangeRateApi, ['api_key'])
 
 
-class RateExchange(ProviderApi):
+class RateExchange(APIProvider):
     _id = 'rate-exchange.appspot.com'
     url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
