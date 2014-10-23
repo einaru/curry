@@ -16,12 +16,12 @@ import urllib.request
 import time
 import requests
 
-from curry.config import cache_path
+from curry.config import config, get_cache_file
 
 log = logging.getLogger(__name__)
 
-# Available API providers
 Providers = {}
+"""A dictionary containing all available API providers."""
 
 
 def register_api_provider(api, cls, requires=[]):
@@ -36,6 +36,16 @@ def list_api_providers():
         if len(requires) > 0:
             output = '{} (requires: {})'.format(output, requires)
         print(output)
+
+
+def cache_has_expired(timestamp):
+    # Safe guard against user configuration error
+    try:
+        cache_timeout = config.get('cache_timeout')
+    except:
+        cache_timeout = config.default_cache_timeout()
+
+    return timestamp < time.time() - cache_timeout
 
 
 class Provider:
@@ -60,6 +70,7 @@ class Provider:
         if not self.api:
             raise APIError('No API provider is set!')
 
+        transaction, payment = transaction.upper(), payment.upper()
         log.info('Using API provider: {}'.format(self.api.id_))
         rate = -1
         try:
@@ -89,36 +100,114 @@ class APIProvider:
 
     def __init__(self, api_key=None):
         self.api_key = api_key
+        self.cache = {}
 
     def get_exchange_rate(self, transaction, payment):
         """Must be implemented in every subclass."""
 
-    def dump_http_response_headers(status_code, headers):
-        log.debug('*** Start: HTTP Response Headers ***')
-        log.debug('  status code: {}'.format(status_code))
-        for k, v in headers.items():
-            log.debug('   {}: {}'.format(k, v))
+    def save_cache(self, transaction, payment, rate):
+        """Save the exchange rate data for a currency pair (transaction
+        currency and payment currency), together with a timestamp.
+
+        :param transaction: the transaction (from) currency.
+        :param payment: the payment (to) currency.
+        :param rate: the exchange rate for the currency pair.
+
+        :returns: True if the cache is saved, False otherwise.
+        """
+        if not hasattr(self, 'cache_file'):
+            log.warn('Trying to save cache, but no cache_file is declared')
+            return False
+
+        cache = {
+            payment: {
+                'rate': rate,
+                'timestamp': time.time(),
+            }
+        }
+
+        if transaction in self.cache:
+            self.cache[transaction].update(cache)
+        else:
+            self.cache[transaction] = cache
+
+        with open(self.cache_file, 'w') as f:
+            f.write(json.dumps(self.cache))
+
+        log.info('Cache saved.')
+        return True
+
+    def load_cache(self):
+        """Load the cache file
+
+        :returns: True if the cache file is loaded, False if its not,
+            and None if no cache_file attribute is declared.
+        """
+        if not hasattr(self, 'cache_file'):
+            log.warn('Trying to load cache, but no cache_file is declared')
+            return None
+
+        if os.path.isfile(self.cache_file):
+            with open(self.cache_file) as f:
+                self.cache = json.load(f)
+            log.info('Cache loaded.')
+            return True
+
+        return False
+
+    def dump_http_response(self, response):
+        log.debug('*** Start: HTTP Response DUMP ***')
+        log.debug('  Status code: {}'.format(response.status_code))
+        log.debug('  Headers:')
+        for k, v in response.headers.items():
+            log.debug('    {}: {}'.format(k, v))
+        log.debug('  Content:')
+        log.debug('    {}'.format(response.content))
         log.debug('*** End ***')
 
 
 class Yahoo(APIProvider):
     id_ = 'finance.yahoo.com'
-    url = 'http://download.finance.yahoo.com/d/quotes.csv?s={}{}=X&f=l1&e=.cs'
+    url = 'http://download.finance.yahoo.com/d/quotes.csv?s={}{}=X&f=l1'
+
+    def __init__(self, api_key=None):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment)
-        log.debug('Request url: {}'.format(url))
+        self.load_cache()
 
-        # FIXME:2014-10-21:einar: response value is of type 'bytes'
-        res = urllib.request.urlopen(url.format(transaction, payment)).read()
-        log.debug('Got response: {}'.format(res))
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        try:
-            rate = float(res)
-        except ValueError as e:
-            log.error(e)
+        # If rate is None here the exchange rate was either not cached
+        # or its timestamp was too old, therefor we need to do a
+        # request for an up-to-date exchange rate.
+        if not rate:
+            url = self.url.format(transaction, payment)
+            log.debug('Request url: {}'.format(url))
 
-        # TODO:2014-10-21:einar: add better error handling for yahoo api
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            # TODO:2014-10-23:einar: provide better user feedback.
+            # Should probably provide some sort of 'contact developer'
+            # functionality is implemented.
+            if r.status_code != 200:
+                raise APIError('Unknown API error happend.', self.id_)
+
+            rate = r.text
+
+            try:
+                rate = float(rate)
+            except ValueError:
+                raise APIError(rate, self.id_)
+
+            self.save_cache(transaction, payment, rate)
+
         return rate
 
 
@@ -129,27 +218,46 @@ class ExchangeRateAPI(APIProvider):
     id_ = 'exchangerate-api.com'
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
+    def __init__(self, api_key):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
+
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment, self.api_key)
-        log.debug('Request url: {}'.format(url))
-        res = urllib.request.urlopen(url).read()
+        self.load_cache()
 
-        try:
-            rate = float(res)
-        except ValueError as e:
-            log.error(e)
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        if rate == -1:
-            raise APIError('Invalid amount used')
-        if rate == -2:
-            raise APIError('Invalid currency code: {} -> {}'
-                           .format(transaction, payment))
-        if rate == -3:
-            raise APIError('Invalid API key: {}'.format(self.api_key))
-        if rate == -4:
-            raise APIError('API query limit reached')
-        if rate == -5:
-            raise APIError('Unresolved IP address used')
+        if not rate:
+            url = self.url.format(transaction, payment, self.api_key)
+            log.debug('Request url: {}'.format(url))
+
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            rate = r.text
+
+            try:
+                rate = float(rate)
+            except ValueError as e:
+                raise APIError(e, self.id_)
+
+            if rate == -1:
+                raise APIError('Invalid amount used')
+            if rate == -2:
+                raise APIError('Invalid currency code: {} -> {}'
+                               .format(transaction, payment))
+            if rate == -3:
+                raise APIError('Invalid API key: {}'.format(self.api_key))
+            if rate == -4:
+                raise APIError('API query limit reached')
+            if rate == -5:
+                raise APIError('Unresolved IP address used')
+
+            self.save_cache(transaction, payment, rate)
 
         return rate
 
@@ -161,23 +269,39 @@ class RateExchange(APIProvider):
     id_ = 'rate-exchange.appspot.com'
     url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
+    def __init__(self, api_key=None):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
+
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment)
-        log.debug('Request url: {}'.format(url))
-        res = urllib.request.urlopen(url).read()
+        self.load_cache()
 
-        # Post process JSON response
-        res = json.loads(res.decode('utf-8'))
-        log.debug('Got json response: {}'.format(res))
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        try:
-            rate = float(res['rate'])
-        except KeyError as ke:
-            log.error(ke)
-            raise APIError('Unable to extract rate key from json response')
-        except ValueError as ve:
-            log.error(ve)
-            raise APIError('Unable to convert exchange rate to float')
+        if not rate:
+            url = self.url.format(transaction, payment)
+            log.debug('Request url: {}'.format(url))
+
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            if r.status_code == 503:
+                # FIXME:2014-10-23:einar: Copy-paste of msg from HTML response
+                raise APIError('Application is temporarily over its serving '
+                               'quota. Please try again later.', self.id_)
+
+            try:
+                rate = r.json().get('rate')
+            except KeyError as ke:
+                log.error(ke)
+                raise APIError('Unable to extract rate key from json response')
+            except ValueError as ve:
+                log.error(ve)
+                raise APIError('Unable to convert exchange rate to float')
 
         return rate
 
@@ -187,12 +311,12 @@ register_api_provider(RateExchange.id_, RateExchange)
 
 class OpenExchangeRates(APIProvider):
     id_ = 'openexchangerates.org'
-    url = 'http://openexchangerates.org/api/latest.json?appid_={}'
+    url = 'http://openexchangerates.org/api/latest.json?app_id={}'
 
     def __init__(self, api_key):
         APIProvider.__init__(self, api_key)
         self.cache = {}
-        self.cache_file = os.path.join(cache_path, self.id_)
+        self.cache_file = get_cache_file(self.id_)
         # TODO:2014-10-22:einar: refactor initial cache loading
         if os.path.isfile(self.cache_file):
             with open(self.cache_file) as f:
@@ -211,7 +335,6 @@ class OpenExchangeRates(APIProvider):
 
         base = self.cache.get('base')
         rates = self.cache.get('rates')
-        transaction, payment = transaction.upper(), payment.upper()
         # Since no APIError is raied, we can assume that both currency
         # codes are valid.
         t_rate = rates.get(transaction)
@@ -247,7 +370,7 @@ class OpenExchangeRates(APIProvider):
             'last_modified': last_modified,
             'base': base,
             'rates': rates,
-            'time_saved': time.time()
+            'timestamp': time.time()
         }
         with open(self.cache_file, 'w') as f:
             f.write(json.dumps(self.cache))
@@ -261,9 +384,7 @@ class OpenExchangeRates(APIProvider):
             self.save_cache(*data)
         else:
             # Check if our cache is up-to-date
-            cache_timeout = 60 * 60 * 24  # 24 hours
-            now = time.time()
-            if self.cache.get('time_saved') < now - cache_timeout:
+            if cache_has_expired(self.cache.get('timestamp')):
                 headers = {
                     'If-None-Match': "{}".format(self.cache.get('etag')),
                     'If-Modified-Since': self.cache.get('last_modified'),
@@ -294,7 +415,7 @@ class OpenExchangeRates(APIProvider):
         r = requests.get(url, headers=headers)
         status_code = r.status_code
 
-        self.dump_http_response_headers(status_code, r.headers)
+        self.dump_http_response(r)
 
         if status_code == 404:
             raise APIError('Non-existent resource requested', self.id_)
@@ -316,13 +437,14 @@ class OpenExchangeRates(APIProvider):
 
         if status_code == 200 or status_code == 304:
             # Only return what we care about
-            rates = r.json().get('rates')
-            base = r.json().get('base')
-            etag = r.headers.get('etag')
-            last_modified = r.headers.get('last_modified')
-            return status_code, (base, rates, etag, last_modified)
+            return status_code, (r.json().get('base'),
+                                 r.json().get('rates'),
+                                 r.headers.get('etag'),
+                                 r.headers.get('last_modified'))
         else:
-            # TODO:2014-10-22:einar: handle this one better
+            # TODO:2014-10-22:einar: provide better user feedback.
+            # Should probably provide some sort of 'contact developer'
+            # functionality is implemented.
             raise APIError('Received unexpected status code: {}'
                            .format(status_code), self.id_)
 

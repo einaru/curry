@@ -1,6 +1,21 @@
 # Curry
 
-A command-line, and Gtk3, currency converter.
+A command-line currency converter.
+
+
+## Dependencies
+
+- [Python](https://www.python.org) 3.x
+- [Python-Requests](http://docs.python-requests.org/en/latest/)
+
+
+## Install
+
+``` bash
+$ curl -L  http://github.com/einaru/curry/archive/v0.3.tar.gz | tar xv
+$ cd curry-v0.3
+$ sudo python3 setup.py install
+```
 
 
 ## License
