@@ -179,28 +179,46 @@ class OpenExchangeRates(APIProvider):
         APIProvider.__init__(self, api_key)
         self.cache = {}
         self.cache_file = os.path.join(cache_path, self._id)
-        self.base_currency = 'USD'
         # TODO:2014-10-22:einar: refactor initial cache loading
         if os.path.isfile(self.cache_file):
             with open(self.cache_file) as f:
                 self.cache = json.load(f)
 
     def get_exchange_rate(self, _from, to):
+        """Calculates the exchange rate between a transaction currency
+        and a payment currency, relative to a given base currency.
+
+        :param _from: transaction (from) currency.
+        :param to: payment (to) currency
+
+        :returns: the exchange rate for the given currency pair.
+        """
         self.load_cache()
 
+        base = self.cache.get('base')
         rates = self.cache.get('rates')
+        _from, to = _from.upper(), to.upper()
         # Since no APIError is raied, we can assume that both currency
         # codes are valid.
-        from_currency = rates.get(_from.upper())
-        to_currency = rates.get(to.upper())
+        t_rate = rates.get(_from)
+        p_rate = rates.get(to)
+        log.debug('Using base currency: {}'.format(base))
+        log.debug('Calculation currency pair: {}/{} '
+                  .format(_from, to))
 
-        if _from.upper() == self.base_currency:
-            return to_currency
+        if _from == base:
+            log.debug('Transaction currency ({}) == base currency ({})'
+                      .format(_from, base))
+            return p_rate
 
-        if to.upper() == self.base_currency:
-            return 1 / from_currency
+        if to == base:
+            log.debug('Payment currency ({}) == base currency ({})'
+                      .format(to, base))
+            return 1 / t_rate
 
-        return from_currency * (1 / to_currency)
+        log.debug('1 {} == {} {}'.format(base, t_rate, _from))
+        log.debug('1 {} == {} {}'.format(base, p_rate, to))
+        return p_rate * (1 / t_rate)
 
     def save_cache(self, rates, etag, last_modified):
         """Save exchange rates as local cache.
