@@ -11,10 +11,9 @@
 import os
 import json
 import logging
-import urllib.error
-import urllib.request
 import time
 import requests
+from requests.exceptions import RequestException
 
 from curry.config import config, get_cache_file
 
@@ -72,11 +71,12 @@ class Provider:
 
         transaction, payment = transaction.upper(), payment.upper()
         log.info('Using API provider: {}'.format(self.api.id_))
+
         rate = -1
         try:
             rate = self.api.get_exchange_rate(transaction, payment)
         # XXX:2014-10-22:einar: do HTTP error handling more granular?
-        except urllib.error.HTTPError as e:
+        except RequestException as e:
             log.error(e)
 
         return rate
