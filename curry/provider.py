@@ -106,9 +106,28 @@ class APIProvider:
     def get_exchange_rate(self, transaction, payment):
         """Must be implemented in every subclass."""
 
+    def get_exchange_rate_from_cache(self, transaction, payment):
+        """Try to get the exchange rate from cache.
+
+        :param transaction: the transaction (from) currency.
+        :param payment: the payment (to) currency.
+
+        :returns: the exchange rate, if found and the cache timeout is
+            not reached, None otherwise.
+        """
+        self.load_cache()
+        rate = None
+        if not self.refresh_cache and transaction in self.cache:
+            data = self.cache[transaction].get(payment)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
+        return rate
+
     def save_cache(self, transaction, payment, rate):
-        """Save the exchange rate data for a currency pair (transaction
-        currency and payment currency), together with a timestamp.
+        """Generic caching for API providers where a request is needed
+        for every currency pair. The exchange rate for a currency pair
+        (transaction currency and payment currency) is saved together
+        with a timestamp.
 
         :param transaction: the transaction (from) currency.
         :param payment: the payment (to) currency.
@@ -139,7 +158,7 @@ class APIProvider:
         return True
 
     def load_cache(self):
-        """Load the cache file
+        """Load saved cache from disk.
 
         :returns: True if the cache file is loaded, False if its not,
             and None if no cache_file attribute is declared.
@@ -176,13 +195,7 @@ class Yahoo(APIProvider):
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
-        self.load_cache()
-
-        rate = None
-        if not self.refresh_cache and transaction in self.cache:
-            data = self.cache[transaction].get(payment, None)
-            if data and not cache_has_expired(data.get('timestamp')):
-                rate = data.get('rate')
+        rate = self.get_exchange_rate_from_cache(transaction, payment)
 
         # If rate is None here the exchange rate was either not cached
         # or its timestamp was too old, therefor we need to do a
@@ -224,13 +237,7 @@ class ExchangeRateAPI(APIProvider):
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
-        self.load_cache()
-
-        rate = None
-        if not self.refresh_cache and transaction in self.cache:
-            data = self.cache[transaction].get(payment, None)
-            if data and not cache_has_expired(data.get('timestamp')):
-                rate = data.get('rate')
+        rate = self.get_exchange_rate_from_cache(transaction, payment)
 
         if not rate:
             url = self.url.format(transaction, payment, self.api_key)
@@ -275,13 +282,7 @@ class RateExchange(APIProvider):
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
-        self.load_cache()
-
-        rate = None
-        if not self.refresh_cache and transaction in self.cache:
-            data = self.cache[transaction].get(payment, None)
-            if data and not cache_has_expired(data.get('timestamp')):
-                rate = data.get('rate')
+        rate = self.get_exchange_rate_from_cache(transaction, payment)
 
         if not rate:
             url = self.url.format(transaction, payment)
