@@ -222,16 +222,18 @@ class OpenExchangeRates(APIProvider):
         log.debug('1 {} == {} {}'.format(base, p_rate, payment))
         return p_rate * (1 / t_rate)
 
-    def save_cache(self, rates, etag, last_modified):
+    def save_cache(self, base, rates, etag, last_modified):
         """Save exchange rates as local cache.
 
-        :param rates: json encoded exchange rates
+        :param base: the base currency for the exchange rates
+        :param rates: the exchange rates
         :param etag: doubleqouted identifier
         :param last_modified: date string
         """
         self.cache = {
             'etag': etag,
             'last_modified': last_modified,
+            'base': base,
             'rates': rates,
             'time_saved': time.time()
         }
@@ -243,8 +245,8 @@ class OpenExchangeRates(APIProvider):
         url = self.url.format(self.api_key)
         if not self.cache:
             # Do a regular request for latest currencies and save cache
-            status_code, rates, etag, last_modified = self._do_request(url)
-            self.save_cache(rates, etag, last_modified)
+            status_code, data = self._do_request(url)
+            self.save_cache(*data)
         else:
             # Check if our cache is up-to-date
             cache_timeout = 60 * 60 * 24  # 24 hours
@@ -262,8 +264,7 @@ class OpenExchangeRates(APIProvider):
                 else:
                     # TODO:2014-10-22:einar: safe to assume status code 200?
                     log.info('Cache is out-of-date')
-                    rates, etag, last_modified = data
-                    self.save_cache(rates, etag, last_modified)
+                    self.save_cache(*data)
             else:
                 log.info('Keeping current cache has not expired')
 
@@ -271,10 +272,11 @@ class OpenExchangeRates(APIProvider):
         """Runs the actual HTTP request, and handles API errors.
 
         :param url: the request url
-        :headers: additional request headers
+        :param headers: additional request headers
 
-        :returns: status code, rates, etag and the last modified field
-            on success, else an `APIError`is raised.
+        :returns: on success the status code, base currency, exchange
+            rates, etag and the last modified is returned, else an
+            `APIError` is raised.
         """
         log.debug('Request url: {}'.format(url))
         r = requests.get(url, headers=headers)
@@ -303,9 +305,10 @@ class OpenExchangeRates(APIProvider):
         if status_code == 200 or status_code == 304:
             # Only return what we care about
             rates = r.json().get('rates')
+            base = r.json().get('base')
             etag = r.headers.get('etag')
             last_modified = r.headers.get('last_modified')
-            return status_code, rates, etag, last_modified
+            return status_code, (base, rates, etag, last_modified)
         else:
             # TODO:2014-10-22:einar: handle this one better
             raise APIError('Received unexpected status code: {}'
