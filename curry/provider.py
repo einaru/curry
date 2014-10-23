@@ -7,6 +7,7 @@
     Copyright: (c) 2014 Einar Uvsløkk
     License: GNU General Public License (GPL) version 3 or later
 """
+# TODO:2014-10-23:einar: review use of appropriate log levels
 import os
 import json
 import logging
@@ -277,7 +278,7 @@ class OpenExchangeRates(APIProvider):
                     log.info('Cache is out-of-date')
                     self.save_cache(*data)
             else:
-                log.info('Keeping current cache has not expired')
+                log.info('Current cache has not expired')
 
     def _do_request(self, url, headers={}):
         """Runs the actual HTTP request, and handles API errors.

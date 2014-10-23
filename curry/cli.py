@@ -33,15 +33,16 @@ def parse_command_line(argv, **defaults):
     parser.add_argument('_from', metavar='from',
                         help='the transaction currency')
     parser.add_argument('to', help='the payment currency')
-    parser.add_argument('amount', nargs='?', type=float, default=1,
-                        help='the amount to convert (default: 1)')
+    parser.add_argument('amount', nargs='*', type=float, default=[1],
+                        help='the amount to convert, if more than one amount '
+                             'is given, the sum is used (default: 1)')
 
     default_api = defaults.get('api')
     parser.add_argument('-a', '--api', default=default_api,
                         help='get exchange rates from a given API provider')
     parser.add_argument('-k', '--api-key', metavar='KEY',
                         help='use an API-key (required by some API '
-                        'providers!)')
+                             'providers!)')
     parser.add_argument('-l', '--list', action=ListAPIProviders, nargs=0,
                         help='show a list of available provider API\'s')
 
@@ -95,7 +96,7 @@ def main():
             log.info('Got negative exchange rate: {}'.format(rate))
             return 1
 
-        print('{:.2f}'.format(rate * args.amount))
+        print('{:.2f}'.format(rate * sum(args.amount)))
 
         if args.save:
             config.set('api', api)
