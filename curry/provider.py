@@ -98,9 +98,10 @@ class APIError(Exception):
 class APIProvider:
     """Super class for API providers."""
 
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, refresh_cache=False):
         self.api_key = api_key
         self.cache = {}
+        self.refresh_cache = refresh_cache
 
     def get_exchange_rate(self, transaction, payment):
         """Must be implemented in every subclass."""
@@ -170,15 +171,15 @@ class Yahoo(APIProvider):
     id_ = 'finance.yahoo.com'
     url = 'http://download.finance.yahoo.com/d/quotes.csv?s={}{}=X&f=l1'
 
-    def __init__(self, api_key=None):
-        APIProvider.__init__(self, api_key)
+    def __init__(self, **kwargs):
+        APIProvider.__init__(self, **kwargs)
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
         self.load_cache()
 
         rate = None
-        if transaction in self.cache:
+        if not self.refresh_cache and transaction in self.cache:
             data = self.cache[transaction].get(payment, None)
             if data and not cache_has_expired(data.get('timestamp')):
                 rate = data.get('rate')
@@ -218,15 +219,15 @@ class ExchangeRateAPI(APIProvider):
     id_ = 'exchangerate-api.com'
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
-    def __init__(self, api_key):
-        APIProvider.__init__(self, api_key)
+    def __init__(self, **kwargs):
+        APIProvider.__init__(self, **kwargs)
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
         self.load_cache()
 
         rate = None
-        if transaction in self.cache:
+        if not self.refresh_cache and transaction in self.cache:
             data = self.cache[transaction].get(payment, None)
             if data and not cache_has_expired(data.get('timestamp')):
                 rate = data.get('rate')
@@ -269,15 +270,15 @@ class RateExchange(APIProvider):
     id_ = 'rate-exchange.appspot.com'
     url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
-    def __init__(self, api_key=None):
-        APIProvider.__init__(self, api_key)
+    def __init__(self, **kwargs):
+        APIProvider.__init__(self, **kwargs)
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
         self.load_cache()
 
         rate = None
-        if transaction in self.cache:
+        if not self.refresh_cache and transaction in self.cache:
             data = self.cache[transaction].get(payment, None)
             if data and not cache_has_expired(data.get('timestamp')):
                 rate = data.get('rate')
@@ -313,9 +314,8 @@ class OpenExchangeRates(APIProvider):
     id_ = 'openexchangerates.org'
     url = 'http://openexchangerates.org/api/latest.json?app_id={}'
 
-    def __init__(self, api_key):
-        APIProvider.__init__(self, api_key)
-        self.cache = {}
+    def __init__(self, **kwargs):
+        APIProvider.__init__(self, **kwargs)
         self.cache_file = get_cache_file(self.id_)
         # TODO:2014-10-22:einar: refactor initial cache loading
         if os.path.isfile(self.cache_file):
