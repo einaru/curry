@@ -1,8 +1,11 @@
 """
-    Curry - configuration
-    ~~~~~~~~~~~~~~~~~~~~~
+    Curry
+    ~~~~~
+
+    Configuration
 
     Copyright: (c) 2014 Einar Uvsløkk
+    License: GNU General Public License (GPL) version 3 or later
 """
 import os
 import logging

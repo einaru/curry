@@ -1,8 +1,11 @@
 """
-    Curry - Command-line interface
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Curry
+    ~~~~~
+
+    Command-line interface
 
     Copyright: (c) 2014 Einar Uvsløkk
+    License: GNU General Public License (GPL) version 3 or later
 """
 import sys
 import logging

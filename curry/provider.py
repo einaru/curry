@@ -1,8 +1,11 @@
 """
-    Curry - Exchange-rate API providers
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Curry
+    ~~~~~
+
+    Exchange-rate API providers
 
     Copyright: (c) 2014 Einar Uvsløkk
+    License: GNU General Public License (GPL) version 3 or later
 """
 import os
 import json
@@ -69,6 +72,8 @@ class Provider:
 
 
 class APIError(Exception):
+    """Common exception class for all API errors."""
+
     def __init__(self, message, id_=None):
         self.message = message
         self.id_ = id_
@@ -94,11 +99,11 @@ class Yahoo(APIProvider):
     url = 'http://download.finance.yahoo.com/d/quotes.csv?s={}{}=X&f=l1&e=.cs'
 
     def get_exchange_rate(self, transaction, payment):
-        req_url = self.url.format(transaction, payment)
-        log.debug('Request url: {}'.format(req_url))
+        url = self.url.format(transaction, payment)
+        log.debug('Request url: {}'.format(url))
 
         # FIXME:2014-10-21:einar: response value is of type 'bytes'
-        res = urllib.request.urlopen(req_url.format(transaction, payment)).read()
+        res = urllib.request.urlopen(url.format(transaction, payment)).read()
         log.debug('Got response: {}'.format(res))
 
         try:
@@ -118,9 +123,9 @@ class ExchangeRateAPI(APIProvider):
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
     def get_exchange_rate(self, transaction, payment):
-        req_url = self.url.format(transaction, payment, self.api_key)
-        log.debug('Request url: {}'.format(req_url))
-        res = urllib.request.urlopen(req_url).read()
+        url = self.url.format(transaction, payment, self.api_key)
+        log.debug('Request url: {}'.format(url))
+        res = urllib.request.urlopen(url).read()
 
         try:
             rate = float(res)
@@ -150,12 +155,12 @@ class RateExchange(APIProvider):
     url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
     def get_exchange_rate(self, transaction, payment):
-        req_url = self.url.format(transaction, payment)
-        log.debug('Request url: {}'.format(req_url))
-        json_res = urllib.request.urlopen(req_url).read()
+        url = self.url.format(transaction, payment)
+        log.debug('Request url: {}'.format(url))
+        res = urllib.request.urlopen(url).read()
 
         # Post process JSON response
-        res = json.loads(json_res.decode('utf-8'))
+        res = json.loads(res.decode('utf-8'))
         log.debug('Got json response: {}'.format(res))
 
         try:
