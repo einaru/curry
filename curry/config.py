@@ -82,6 +82,7 @@ class Config:
             self.config.set(section, key, val)
 
     def save(self):
+        log.info('Saving config file: {}'.format(config_file))
         with open(config_file, 'w') as f:
             self.config.write(f)
 
