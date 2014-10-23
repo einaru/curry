@@ -100,9 +100,60 @@ class APIProvider:
 
     def __init__(self, api_key=None):
         self.api_key = api_key
+        self.cache = {}
 
     def get_exchange_rate(self, transaction, payment):
         """Must be implemented in every subclass."""
+
+    def save_cache(self, transaction, payment, rate):
+        """Save the exchange rate data for a currency pair (transaction
+        currency and payment currency), together with a timestamp.
+
+        :param transaction: the transaction (from) currency.
+        :param payment: the payment (to) currency.
+        :param rate: the exchange rate for the currency pair.
+
+        :returns: True if the cache is saved, False otherwise.
+        """
+        if not hasattr(self, 'cache_file'):
+            log.warn('Trying to save cache, but no cache_file is declared')
+            return False
+
+        cache = {
+            payment: {
+                'rate': rate,
+                'timestamp': time.time(),
+            }
+        }
+
+        if transaction in self.cache:
+            self.cache[transaction].update(cache)
+        else:
+            self.cache[transaction] = cache
+
+        with open(self.cache_file, 'w') as f:
+            f.write(json.dumps(self.cache))
+
+        log.info('Cache saved.')
+        return True
+
+    def load_cache(self):
+        """Load the cache file
+
+        :returns: True if the cache file is loaded, False if its not,
+            and None if no cache_file attribute is declared.
+        """
+        if not hasattr(self, 'cache_file'):
+            log.warn('Trying to load cache, but no cache_file is declared')
+            return None
+
+        if os.path.isfile(self.cache_file):
+            with open(self.cache_file) as f:
+                self.cache = json.load(f)
+            log.info('Cache loaded.')
+            return True
+
+        return False
 
     def dump_http_response(self, response):
         log.debug('*** Start: HTTP Response DUMP ***')
@@ -121,7 +172,6 @@ class Yahoo(APIProvider):
 
     def __init__(self, api_key=None):
         APIProvider.__init__(self, api_key)
-        self.cache = {}
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
@@ -160,30 +210,6 @@ class Yahoo(APIProvider):
 
         return rate
 
-    def save_cache(self, transaction, payment, rate):
-        info = {
-            payment: {
-                'rate': rate,
-                'timestamp': time.time()
-            }
-        }
-
-        if transaction in self.cache:
-            self.cache[transaction].update(info)
-        else:
-            self.cache[transaction] = info
-
-        with open(self.cache_file, 'w') as f:
-            f.write(json.dumps(self.cache))
-
-        log.info('Cache saved.')
-
-    def load_cache(self):
-        if os.path.isfile(self.cache_file):
-            with open(self.cache_file) as f:
-                self.cache = json.load(f)
-            log.info('Cache loaded.')
-
 
 register_api_provider(Yahoo.id_, Yahoo)
 
@@ -192,27 +218,46 @@ class ExchangeRateAPI(APIProvider):
     id_ = 'exchangerate-api.com'
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
+    def __init__(self, api_key):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
+
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment, self.api_key)
-        log.debug('Request url: {}'.format(url))
-        res = urllib.request.urlopen(url).read()
+        self.load_cache()
 
-        try:
-            rate = float(res)
-        except ValueError as e:
-            log.error(e)
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        if rate == -1:
-            raise APIError('Invalid amount used')
-        if rate == -2:
-            raise APIError('Invalid currency code: {} -> {}'
-                           .format(transaction, payment))
-        if rate == -3:
-            raise APIError('Invalid API key: {}'.format(self.api_key))
-        if rate == -4:
-            raise APIError('API query limit reached')
-        if rate == -5:
-            raise APIError('Unresolved IP address used')
+        if not rate:
+            url = self.url.format(transaction, payment, self.api_key)
+            log.debug('Request url: {}'.format(url))
+
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            rate = r.text
+
+            try:
+                rate = float(rate)
+            except ValueError as e:
+                raise APIError(e, self.id_)
+
+            if rate == -1:
+                raise APIError('Invalid amount used')
+            if rate == -2:
+                raise APIError('Invalid currency code: {} -> {}'
+                               .format(transaction, payment))
+            if rate == -3:
+                raise APIError('Invalid API key: {}'.format(self.api_key))
+            if rate == -4:
+                raise APIError('API query limit reached')
+            if rate == -5:
+                raise APIError('Unresolved IP address used')
+
+            self.save_cache(transaction, payment, rate)
 
         return rate
 
@@ -224,23 +269,39 @@ class RateExchange(APIProvider):
     id_ = 'rate-exchange.appspot.com'
     url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
+    def __init__(self, api_key=None):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
+
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment)
-        log.debug('Request url: {}'.format(url))
-        res = urllib.request.urlopen(url).read()
+        self.load_cache()
 
-        # Post process JSON response
-        res = json.loads(res.decode('utf-8'))
-        log.debug('Got json response: {}'.format(res))
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        try:
-            rate = float(res['rate'])
-        except KeyError as ke:
-            log.error(ke)
-            raise APIError('Unable to extract rate key from json response')
-        except ValueError as ve:
-            log.error(ve)
-            raise APIError('Unable to convert exchange rate to float')
+        if not rate:
+            url = self.url.format(transaction, payment)
+            log.debug('Request url: {}'.format(url))
+
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            if r.status_code == 503:
+                # FIXME:2014-10-23:einar: Copy-paste of msg from HTML response
+                raise APIError('Application is temporarily over its serving '
+                               'quota. Please try again later.', self.id_)
+
+            try:
+                rate = r.json().get('rate')
+            except KeyError as ke:
+                log.error(ke)
+                raise APIError('Unable to extract rate key from json response')
+            except ValueError as ve:
+                log.error(ve)
+                raise APIError('Unable to convert exchange rate to float')
 
         return rate
 
