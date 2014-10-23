@@ -269,23 +269,39 @@ class RateExchange(APIProvider):
     id_ = 'rate-exchange.appspot.com'
     url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
 
+    def __init__(self, api_key=None):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
+
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment)
-        log.debug('Request url: {}'.format(url))
-        res = urllib.request.urlopen(url).read()
+        self.load_cache()
 
-        # Post process JSON response
-        res = json.loads(res.decode('utf-8'))
-        log.debug('Got json response: {}'.format(res))
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        try:
-            rate = float(res['rate'])
-        except KeyError as ke:
-            log.error(ke)
-            raise APIError('Unable to extract rate key from json response')
-        except ValueError as ve:
-            log.error(ve)
-            raise APIError('Unable to convert exchange rate to float')
+        if not rate:
+            url = self.url.format(transaction, payment)
+            log.debug('Request url: {}'.format(url))
+
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            if r.status_code == 503:
+                # FIXME:2014-10-23:einar: Copy-paste of msg from HTML response
+                raise APIError('Application is temporarily over its serving '
+                               'quota. Please try again later.', self.id_)
+
+            try:
+                rate = r.json().get('rate')
+            except KeyError as ke:
+                log.error(ke)
+                raise APIError('Unable to extract rate key from json response')
+            except ValueError as ve:
+                log.error(ve)
+                raise APIError('Unable to convert exchange rate to float')
 
         return rate
 
