@@ -38,7 +38,13 @@ def list_api_providers():
 
 
 def cache_has_expired(timestamp):
-    # Safe guard against user configuration error
+    """Check the timestamp of local cache has expired according to
+    the configured cache_timeout.
+
+    :param timestamp: timestamp of the local cache.
+
+    :returns: True if the cache has expired, False otherwise.
+    """
     try:
         cache_timeout = config.get('cache_timeout')
     except:
@@ -66,6 +72,14 @@ class Provider:
         self.api = Providers[api]['class'](**kwargs)
 
     def get_exchange_rate(self, transaction, payment):
+        """Get the exchange rate for a currency pair (transaction
+        currency -> payment currency).
+
+        :param transaction: transaction (from) currency.
+        :param payment: payment (to) currency.
+
+        :returns: the exchange rate or raises an APIError.
+        """
         if not self.api:
             raise APIError('No API provider is set!')
 
@@ -132,12 +146,10 @@ class APIProvider:
         :param transaction: the transaction (from) currency.
         :param payment: the payment (to) currency.
         :param rate: the exchange rate for the currency pair.
-
-        :returns: True if the cache is saved, False otherwise.
         """
         if not hasattr(self, 'cache_file'):
             log.warn('Trying to save cache, but no cache_file is declared')
-            return False
+            return
 
         cache = {
             payment: {
@@ -151,11 +163,9 @@ class APIProvider:
         else:
             self.cache[transaction] = cache
 
+        log.info('Saving cache.')
         with open(self.cache_file, 'w') as f:
             f.write(json.dumps(self.cache))
-
-        log.info('Cache saved.')
-        return True
 
     def load_cache(self):
         """Load saved cache from disk.
@@ -165,15 +175,12 @@ class APIProvider:
         """
         if not hasattr(self, 'cache_file'):
             log.warn('Trying to load cache, but no cache_file is declared')
-            return None
+            return
 
         if os.path.isfile(self.cache_file):
+            log.info('Loading cache.')
             with open(self.cache_file) as f:
                 self.cache = json.load(f)
-            log.info('Cache loaded.')
-            return True
-
-        return False
 
     def dump_http_response(self, response):
         log.debug('*** Start: HTTP Response DUMP ***')
@@ -195,6 +202,14 @@ class Yahoo(APIProvider):
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
+        """Get the exchange rate for a currency pair (transaction
+        currency -> payment currency).
+
+        :param transaction: transaction (from) currency.
+        :param payment: payment (to) currency.
+
+        :returns: the exchange rate or raises an APIError.
+        """
         rate = self.get_exchange_rate_from_cache(transaction, payment)
 
         # If rate is None here the exchange rate was either not cached
@@ -237,6 +252,14 @@ class ExchangeRateAPI(APIProvider):
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
+        """Get the exchange rate for a currency pair (transaction
+        currency -> payment currency).
+
+        :param transaction: transaction (from) currency.
+        :param payment: payment (to) currency.
+
+        :returns: the exchange rate or raises an APIError.
+        """
         rate = self.get_exchange_rate_from_cache(transaction, payment)
 
         if not rate:
@@ -282,6 +305,14 @@ class RateExchange(APIProvider):
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
+        """Get the exchange rate for a currency pair (transaction
+        currency -> payment currency).
+
+        :param transaction: transaction (from) currency.
+        :param payment: payment (to) currency.
+
+        :returns: the exchange rate or raises an APIError.
+        """
         rate = self.get_exchange_rate_from_cache(transaction, payment)
 
         if not rate:
@@ -318,25 +349,21 @@ class OpenExchangeRates(APIProvider):
     def __init__(self, **kwargs):
         APIProvider.__init__(self, **kwargs)
         self.cache_file = get_cache_file(self.id_)
-        # TODO:2014-10-22:einar: refactor initial cache loading
-        if os.path.isfile(self.cache_file):
-            with open(self.cache_file) as f:
-                self.cache = json.load(f)
 
     def get_exchange_rate(self, transaction, payment):
-        """Calculates the exchange rate between a transaction currency
-        and a payment currency, relative to a given base currency.
+        """Get the exchange rate for a currency pair (transaction
+        currency -> payment currency).
 
         :param transaction: transaction (from) currency.
-        :param payment: payment (to) currency
+        :param payment: payment (to) currency.
 
-        :returns: the exchange rate for the given currency pair.
+        :returns: the exchange rate or raises an APIError.
         """
         self.load_cache()
 
         base = self.cache.get('base')
         rates = self.cache.get('rates')
-        # Since no APIError is raied, we can assume that both currency
+        # Since no APIError is raised, we can assume that both currency
         # codes are valid.
         t_rate = rates.get(transaction)
         p_rate = rates.get(payment)
@@ -359,7 +386,11 @@ class OpenExchangeRates(APIProvider):
         return p_rate * (1 / t_rate)
 
     def save_cache(self, base, rates, etag, last_modified):
-        """Save exchange rates as local cache.
+        """Override the parent class implementation to take advantage
+        of the HTML headers that openexchangerates.org provides. All
+        exchange rates relative to a base currency is saved, together
+        with a timestamp, and the etag and last modified fields from the
+        response headers.
 
         :param base: the base currency for the exchange rates
         :param rates: the exchange rates
@@ -373,36 +404,55 @@ class OpenExchangeRates(APIProvider):
             'rates': rates,
             'timestamp': time.time()
         }
+        log.info('Saving cache.')
         with open(self.cache_file, 'w') as f:
             f.write(json.dumps(self.cache))
-        log.info('Saved cache for {}'.format(self.id_))
 
     def load_cache(self):
+        """Override the parent class implementation, to take advantage
+        of HTML headers that openexchangerates.org provides. Local cache
+        is loaded if found, and updated if it is outdated.
+        """
+        if os.path.isfile(self.cache_file):
+            log.info('Loading cache from file.')
+            with open(self.cache_file) as f:
+                self.cache = json.load(f)
+
         url = self.url.format(self.api_key)
+        log.debug('Request url: {}'.format(url))
+
+        # Possible scenarios:
+        # 1. cache is empty       => fetch new rates
+        # 2. cache_refresh = True => check for updated rates
+        # 3. cache has expired    => check for updated rates
+
+        # Scenraio 1. Here we must fetch new rates wether cache_refresh
+        # is True or False
         if not self.cache:
-            # Do a regular request for latest currencies and save cache
-            status_code, data = self._do_request(url)
+            status_code, data = self.do_request(url)
             self.save_cache(*data)
-        else:
-            # Check if our cache is up-to-date
-            if cache_has_expired(self.cache.get('timestamp')):
-                headers = {
-                    'If-None-Match': "{}".format(self.cache.get('etag')),
-                    'If-Modified-Since': self.cache.get('last_modified'),
-                }
+            return
 
-                log.info('Checking cache for "{}"'.format(self.id_))
-                status_code, data = self._do_request(url, headers=headers)
-                if status_code == 304:
-                    log.info('Cache is up-to-date')
-                else:
-                    # TODO:2014-10-22:einar: safe to assume status code 200?
-                    log.info('Cache is out-of-date')
-                    self.save_cache(*data)
+        # Scenraio 2. and 3. Here we take advantage of the etag and last
+        # modifed keys, stored in our local cache, to do a request for
+        # rates only if our cache is outdated.
+        timestamp = self.cache.get('timestamp')
+        if self.refresh_cache or cache_has_expired(timestamp):
+            headers = {
+                'If-None-Match': "{}".format(self.cache.get('etag')),
+                'If-Modified-Since': self.cache.get('last_modified'),
+            }
+
+            log.info('Requesting updated exchange rates')
+            status_code, data = self.do_request(url, headers=headers)
+            if status_code == 304:
+                log.info('Local cache is up-to-date')
             else:
-                log.info('Current cache has not expired')
+                # TODO:2014-10-22:einar: safe to assume status code 200?
+                log.info('Local cache is outdated')
+                self.save_cache(*data)
 
-    def _do_request(self, url, headers={}):
+    def do_request(self, url, headers={}):
         """Runs the actual HTTP request, and handles API errors.
 
         :param url: the request url
@@ -425,19 +475,18 @@ class OpenExchangeRates(APIProvider):
             if message in ['missing_appid_', 'invalid_appid_']:
                 raise APIError('Invalid API key: {}'.format(self.api_key),
                                self.id_)
+            # TODO:2014-10-22:einar: provide an else cause here?
             if message == 'not_allowed':
                 raise APIError('Not allowed to access requested feature')
-            # TODO:2014-10-22:einar: provide an else cause here?
         if status_code == 429:
             raise APIError('Access restricted for over-use', self.id_)
+        # TODO:2014-10-22:einar: use 'description' for better feedback
         if status_code == 403:
-            # TODO:2014-10-22:einar: use 'description' for better feedback
             raise APIError('Access restricted', self.id_)
         if status_code == 400:
             raise APIError('Invalid base currency', self.id_)
 
         if status_code == 200 or status_code == 304:
-            # Only return what we care about
             return status_code, (r.json().get('base'),
                                  r.json().get('rates'),
                                  r.headers.get('etag'),
