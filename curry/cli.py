@@ -12,7 +12,7 @@ import logging
 import argparse
 
 from curry import prog_name, version, description
-from curry.config import Config
+from curry.config import config
 from curry.provider import Provider, APIError, list_api_providers
 
 log = logging.getLogger(__name__)
@@ -67,7 +67,6 @@ def parse_command_line(argv, **defaults):
 
 
 def main():
-    config = Config()
     try:
         # Load config defaults needed for the command-line
         defaults = {
