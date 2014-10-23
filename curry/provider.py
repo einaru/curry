@@ -100,9 +100,61 @@ class APIProvider:
 
     def __init__(self, api_key=None):
         self.api_key = api_key
+        self.cache = {}
 
     def get_exchange_rate(self, transaction, payment):
         """Must be implemented in every subclass."""
+
+    def save_cache(self, transaction, payment, rate):
+        """Save the exchange rate data for a currency pair (transaction
+        currency and payment currency), together with a timestamp.
+
+        :param transaction: the transaction (from) currency.
+        :param payment: the payment (to) currency.
+        :param rate: the exchange rate for the currency pair.
+
+        :returns: True if the cache is saved, False otherwise.
+        """
+        if not hasattr(self, 'cache_file'):
+            log.warn('Trying to save cache, but no cache_file is declared')
+            return False
+
+        cache = {
+            payment: {
+                'rate': rate,
+                'timestamp': time.time(),
+            }
+        }
+
+        if transaction in self.cache:
+            self.cache[transaction].update(cache)
+        else:
+            self.cache[transaction] = cache
+
+        with open(self.cache_file, 'w') as f:
+            f.write(json.dumps(self.cache))
+
+        log.info('Cache saved.')
+        return True
+
+    def load_cache(self):
+        """Load the cache file
+
+        :returns: True if the cache file is loaded, False if its not,
+            and None if no cache_file attribute is declared.
+            otherwise.
+        """
+        if not hasattr(self, 'cache_file'):
+            log.warn('Trying to load cache, but no cache_file is declared')
+            return None
+
+        if os.path.isfile(self.cache_file):
+            with open(self.cache_file) as f:
+                self.cache = json.load(f)
+            log.info('Cache loaded.')
+            return True
+
+        return False
 
     def dump_http_response(self, response):
         log.debug('*** Start: HTTP Response DUMP ***')
@@ -121,7 +173,6 @@ class Yahoo(APIProvider):
 
     def __init__(self, api_key=None):
         APIProvider.__init__(self, api_key)
-        self.cache = {}
         self.cache_file = get_cache_file(self.id_)
 
     def get_exchange_rate(self, transaction, payment):
@@ -159,30 +210,6 @@ class Yahoo(APIProvider):
             self.save_cache(transaction, payment, rate)
 
         return rate
-
-    def save_cache(self, transaction, payment, rate):
-        info = {
-            payment: {
-                'rate': rate,
-                'timestamp': time.time()
-            }
-        }
-
-        if transaction in self.cache:
-            self.cache[transaction].update(info)
-        else:
-            self.cache[transaction] = info
-
-        with open(self.cache_file, 'w') as f:
-            f.write(json.dumps(self.cache))
-
-        log.info('Cache saved.')
-
-    def load_cache(self):
-        if os.path.isfile(self.cache_file):
-            with open(self.cache_file) as f:
-                self.cache = json.load(f)
-            log.info('Cache loaded.')
 
 
 register_api_provider(Yahoo.id_, Yahoo)
