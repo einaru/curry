@@ -34,7 +34,9 @@ setup(
     ],
     keywords='cli currency converter',
     packages=find_packages(exclude=[]),
-    install_requires=[],
+    install_requires=[
+        'requests',  # 2.4.3
+    ],
     data_files=[],
     entry_points={
         'console_scripts': [

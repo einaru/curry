@@ -1,8 +1,11 @@
 """
-    Curry - Command-line interface
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Curry
+    ~~~~~
+
+    Command-line interface
 
     Copyright: (c) 2014 Einar Uvsløkk
+    License: GNU General Public License (GPL) version 3 or later
 """
 import sys
 import logging
@@ -10,12 +13,12 @@ import argparse
 
 from curry import prog_name, version, description
 from curry.config import Config
-from curry.providers import Provider, ApiError, list_api_providers
+from curry.provider import Provider, APIError, list_api_providers
 
 log = logging.getLogger(__name__)
 
 
-class ListApiProviders(argparse.Action):
+class ListAPIProviders(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         list_api_providers()
         sys.exit(0)
@@ -28,17 +31,19 @@ def parse_command_line(argv, **defaults):
                                      description=description)
 
     parser.add_argument('_from', metavar='from',
-                        help='currency to convert from')
-    parser.add_argument('to', help='currency to convert to')
-    parser.add_argument('amount', nargs='?', type=float, default=1,
-                        help='the amount to convert (default: 1)')
+                        help='the transaction currency')
+    parser.add_argument('to', help='the payment currency')
+    parser.add_argument('amount', nargs='*', type=float, default=[1],
+                        help='the amount to convert, if more than one amount '
+                             'is given, the sum is used (default: 1)')
 
     default_api = defaults.get('api')
     parser.add_argument('-a', '--api', default=default_api,
                         help='get exchange rates from a given API provider')
     parser.add_argument('-k', '--api-key', metavar='KEY',
-                        help='use a given API-key (required by some API\'s!)')
-    parser.add_argument('-l', '--list', action=ListApiProviders, nargs=0,
+                        help='use an API-key (required by some API '
+                             'providers!)')
+    parser.add_argument('-l', '--list', action=ListAPIProviders, nargs=0,
                         help='show a list of available provider API\'s')
 
     # TODO:2014-10-21:einar: maybe save on default and provide --no-save flag?
@@ -88,16 +93,17 @@ def main():
 
         # TODO:2014-10-21:einar: better feedback on error?
         if rate <= 0:
+            log.info('Got negative exchange rate: {}'.format(rate))
             return 1
 
-        print('{:.2f}'.format(rate * args.amount))
+        print('{:.2f}'.format(rate * sum(args.amount)))
 
         if args.save:
             config.set('api', api)
             config.set('api_key', api_key, section=api)
             config.save()
 
-    except ApiError as e:
-        log.error(e)
+    except APIError as ae:
+        log.error(ae)
     finally:
         logging.shutdown()

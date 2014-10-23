@@ -1,20 +1,27 @@
 """
-    Curry - configuration
-    ~~~~~~~~~~~~~~~~~~~~~
+    Curry
+    ~~~~~
+
+    Configuration
 
     Copyright: (c) 2014 Einar Uvsløkk
+    License: GNU General Public License (GPL) version 3 or later
 """
 import os
 import logging
 import configparser
-from xdg import BaseDirectory
 
 from curry import prog_name
 
-__all__ = ['Config']
+try:
+    from xdg import BaseDirectory
+    config_path = BaseDirectory.save_config_path(prog_name)
+    cache_path = BaseDirectory.save_cache_path(prog_name)
+except:
+    config_path = os.path.join(os.path.expanduser('~/.config'), prog_name)
+    cache_path = os.path.join(os.path.expanduser('~/.cache'), prog_name)
 
-config_path = BaseDirectory.save_config_path(prog_name)
-cache_path = BaseDirectory.save_cache_path(prog_name)
+__all__ = ['Config']
 
 config_file = os.path.join(config_path, 'config.ini')
 
@@ -37,7 +44,7 @@ class Config:
 
     def set(self, key, val, section='curry'):
         if not val:
-            log.warn('skipping {}: {} ({})'.format(key, val, type(val)))
+            log.warn('Skipping {}: {} ({})'.format(key, val, type(val)))
         else:
             if section not in self.config:
                 self.config.add_section(section)
