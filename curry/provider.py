@@ -142,7 +142,6 @@ class APIProvider:
 
         :returns: True if the cache file is loaded, False if its not,
             and None if no cache_file attribute is declared.
-            otherwise.
         """
         if not hasattr(self, 'cache_file'):
             log.warn('Trying to load cache, but no cache_file is declared')
@@ -219,27 +218,46 @@ class ExchangeRateAPI(APIProvider):
     id_ = 'exchangerate-api.com'
     url = 'http://www.exchangerate-api.com/{}/{}?k={}'
 
+    def __init__(self, api_key):
+        APIProvider.__init__(self, api_key)
+        self.cache_file = get_cache_file(self.id_)
+
     def get_exchange_rate(self, transaction, payment):
-        url = self.url.format(transaction, payment, self.api_key)
-        log.debug('Request url: {}'.format(url))
-        res = urllib.request.urlopen(url).read()
+        self.load_cache()
 
-        try:
-            rate = float(res)
-        except ValueError as e:
-            log.error(e)
+        rate = None
+        if transaction in self.cache:
+            data = self.cache[transaction].get(payment, None)
+            if data and not cache_has_expired(data.get('timestamp')):
+                rate = data.get('rate')
 
-        if rate == -1:
-            raise APIError('Invalid amount used')
-        if rate == -2:
-            raise APIError('Invalid currency code: {} -> {}'
-                           .format(transaction, payment))
-        if rate == -3:
-            raise APIError('Invalid API key: {}'.format(self.api_key))
-        if rate == -4:
-            raise APIError('API query limit reached')
-        if rate == -5:
-            raise APIError('Unresolved IP address used')
+        if not rate:
+            url = self.url.format(transaction, payment, self.api_key)
+            log.debug('Request url: {}'.format(url))
+
+            r = requests.get(url)
+            self.dump_http_response(r)
+
+            rate = r.text
+
+            try:
+                rate = float(rate)
+            except ValueError as e:
+                raise APIError(e, self.id_)
+
+            if rate == -1:
+                raise APIError('Invalid amount used')
+            if rate == -2:
+                raise APIError('Invalid currency code: {} -> {}'
+                               .format(transaction, payment))
+            if rate == -3:
+                raise APIError('Invalid API key: {}'.format(self.api_key))
+            if rate == -4:
+                raise APIError('API query limit reached')
+            if rate == -5:
+                raise APIError('Unresolved IP address used')
+
+            self.save_cache(transaction, payment, rate)
 
         return rate
 
