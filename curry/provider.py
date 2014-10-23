@@ -16,7 +16,6 @@ import time
 import requests
 
 from curry.config import cache_path
-from curry.util import dump_http_response_headers
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +91,13 @@ class APIProvider:
 
     def get_exchange_rate(self, transaction, payment):
         """Must be implemented in every subclass."""
+
+    def dump_http_response_headers(status_code, headers):
+        log.debug('*** Start: HTTP Response Headers ***')
+        log.debug('  status code: {}'.format(status_code))
+        for k, v in headers.items():
+            log.debug('   {}: {}'.format(k, v))
+        log.debug('*** End ***')
 
 
 class Yahoo(APIProvider):
@@ -287,7 +293,7 @@ class OpenExchangeRates(APIProvider):
         r = requests.get(url, headers=headers)
         status_code = r.status_code
 
-        dump_http_response_headers(status_code, r.headers, self.id_)
+        self.dump_http_response_headers(status_code, r.headers)
 
         if status_code == 404:
             raise APIError('Non-existent resource requested', self.id_)
