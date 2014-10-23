@@ -28,8 +28,8 @@ def parse_command_line(argv, **defaults):
                                      description=description)
 
     parser.add_argument('_from', metavar='from',
-                        help='currency to convert from')
-    parser.add_argument('to', help='currency to convert to')
+                        help='the transaction currency')
+    parser.add_argument('to', help='the payment currency')
     parser.add_argument('amount', nargs='?', type=float, default=1,
                         help='the amount to convert (default: 1)')
 

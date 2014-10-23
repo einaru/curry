@@ -41,7 +41,7 @@ class Config:
 
     def set(self, key, val, section='curry'):
         if not val:
-            log.warn('skipping {}: {} ({})'.format(key, val, type(val)))
+            log.warn('Skipping {}: {} ({})'.format(key, val, type(val)))
         else:
             if section not in self.config:
                 self.config.add_section(section)
