@@ -246,52 +246,6 @@ class ExchangeRateAPI(APIProvider):
 register_api_provider(ExchangeRateAPI.id_, ExchangeRateAPI, ['api_key'])
 
 
-class RateExchange(APIProvider):
-    id_ = 'rate-exchange.appspot.com'
-    url = 'http://rate-exchange.appspot.com/currency?from={}&to={}'
-
-    def __init__(self, **kwargs):
-        APIProvider.__init__(self, **kwargs)
-        self.cache_file = get_cache_file(self.id_)
-
-    def get_exchange_rate(self, transaction, payment):
-        """Get the exchange rate for a currency pair (transaction
-        currency -> payment currency).
-
-        :param transaction: transaction (from) currency.
-        :param payment: payment (to) currency.
-
-        :returns: the exchange rate or raises an APIError.
-        """
-        rate = self.get_exchange_rate_from_cache(transaction, payment)
-
-        if not rate:
-            url = self.url.format(transaction, payment)
-            log.debug('Request url: {}'.format(url))
-
-            r = requests.get(url)
-            self.dump_http_response(r)
-
-            if r.status_code == 503:
-                # FIXME:2014-10-23:einar: Copy-paste of msg from HTML response
-                raise APIError('Application is temporarily over its serving '
-                               'quota. Please try again later.', self.id_)
-
-            try:
-                rate = r.json().get('rate')
-            except KeyError as ke:
-                log.error(ke)
-                raise APIError('Unable to extract rate key from json response')
-            except ValueError as ve:
-                log.error(ve)
-                raise APIError('Unable to convert exchange rate to float')
-
-        return rate
-
-
-register_api_provider(RateExchange.id_, RateExchange)
-
-
 class OpenExchangeRates(APIProvider):
     id_ = 'openexchangerates.org'
     url = 'http://openexchangerates.org/api/latest.json?app_id={}'
