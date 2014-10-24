@@ -40,6 +40,15 @@ $ cd curry
 $ sudo python3 setup.py install
 ```
 
+or if you're on [Arch Linux](https://www.archlinux.org)
+
+``` bash
+$ wget https://raw.githubusercontent.com/einaru/curry/master/arch/PKGBUILD
+$ updpkgsums
+$ makepkg
+$ sudo pacman -U python-curry-*.tar.xz
+```
+
 
 ## License
 
