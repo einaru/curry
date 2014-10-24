@@ -13,7 +13,7 @@ import argparse
 
 from curry import prog_name, version, description
 from curry.config import config
-from curry.provider import Provider, APIError, list_api_providers
+from curry.api import Provider, APIError, list_api_providers
 
 log = logging.getLogger(__name__)
 
