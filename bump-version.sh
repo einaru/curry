@@ -7,18 +7,18 @@
 
 show_help() {
 	cat <<-EndShowHelp
-	usage: $0 [-h] [--version] version
+	usage: $0 [-h] [version]
 
 	Bump a version number.
 
 	positional arguments:
 
-	  version    the new version number
+	  version    the new version number, if no arguments is provided, the
+	             current version number is shown.
 
 	optional arguments:
 
 	  -h, --help show this help message and exit
-	  --version  show the current version and exit
 	EndShowHelp
 }
 
@@ -65,25 +65,33 @@ bump_version() {
 	new=$2
 
 	sed -i "s/version = '$old'/version = '$new'/g" $VERSION_FILE
-	#sed -i "s/pkgver='$old'/pkgver='$new'/g" $PKGBUILD_FILE
+	sed -i "s/pkgver='$old'/pkgver='$new'/g" $PKGBUILD_FILE
+	sed -i "s/v$old/v$new/g" $README_FILE
 }
 
 # Setup some initial variables
 GITROOT=$(git rev-parse --show-toplevel)
 cd $GITROOT
 
+# Files that needs to be updated
 VERSION_FILE="./curry/__init__.py"
-#PKGBUILD_FILE="./arch/PKGBUILD"
+PKGBUILD_FILE="./arch/PKGBUILD"
+README_FILE="./README.md"
+GIT_ADD_FILES=($VERSION_FILE $PKGBUILD_FILE $README_FILE)
+
 OLD_VERSION=$(cat $VERSION_FILE | grep 'version' | sed 's/[^0-9.]//g')
 
 # Check for optional arguments
 case "$1" in
 	-h|--help) show_help ; exit 0 ;;
-	--version) echo $OLD_VERSION ; exit 0 ;;
 esac
 
 NEW_VERSION="$1"
-[[ -z $NEW_VERSION ]] && die "missing required argument: version"
+if [[ -z $NEW_VERSION ]]; then
+	echo "$OLD_VERSION"
+	exit 0
+fi
+
 # DONE:2014-10-19:einar: validate version number
 [[ $NEW_VERSION =~ ^-?[0-9.]+$ ]] || die "illegal version number: $NEW_VERSION"
 
@@ -96,7 +104,7 @@ case "$result" in
 	(9)
 		bump_version $OLD_VERSION $NEW_VERSION
 		echo "New version is '$NEW_VERSION'"
-		git add $VERSION_FILE #$PKGBUILD_FILE
+		git add ${GIT_ADD_FILES[@]}
 		echo "Now run: git commit -m 'Bumped version to v$NEW_VERSION'"
 		result=0
 esac

@@ -1,0 +1,11 @@
+# Source code
+*.pyc
+
+# Build directories
+dist/
+
+# Packaging
+arch/pkg/*
+arch/src/*
+arch/*.tar.xz
+arch/*.tar.gz

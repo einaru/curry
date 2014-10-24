@@ -13,7 +13,7 @@ import argparse
 
 from curry import prog_name, version, description
 from curry.config import config
-from curry.provider import Provider, APIError, list_api_providers
+from curry.api import Provider, APIError, list_api_providers
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ def parse_command_line(argv, **defaults):
     # TODO:2014-10-21:einar: maybe save on default and provide --no-save flag?
     parser.add_argument('-s', '--save', action='store_true',
                         help='save config settings on exit')
+    parser.add_argument('--refresh-cache', action='store_true',
+                        help='force a cache refresh')
     parser.add_argument('--version', action='version',
                         version='%(prog)s v{}'.format(version),
                         help='show the application version and exit')
@@ -84,7 +86,8 @@ def main():
 
         kwargs = {
             'api': api,
-            'api_key': api_key
+            'api_key': api_key,
+            'refresh_cache': args.refresh_cache
         }
 
         provider = Provider(**kwargs)
