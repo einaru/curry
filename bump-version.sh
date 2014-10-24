@@ -99,7 +99,7 @@ case "$result" in
 	(9)
 		bump_version $OLD_VERSION $NEW_VERSION
 		echo "New version is '$NEW_VERSION'"
-		#git add $VERSION_FILE $PKGBUILD_FILE
+		git add $VERSION_FILE $PKGBUILD_FILE
 		echo "Now run: git commit -m 'Bumped version to v$NEW_VERSION'"
 		result=0
 esac
