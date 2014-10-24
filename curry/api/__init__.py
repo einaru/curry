@@ -419,7 +419,6 @@ class OpenExchangeRates(APIProvider):
                 self.cache = json.load(f)
 
         url = self.url.format(self.api_key)
-        log.debug('Request url: {}'.format(url))
 
         # Possible scenarios:
         # 1. cache is empty       => fetch new rates
