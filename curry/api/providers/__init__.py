@@ -11,5 +11,7 @@ from .yahoo import Yahoo
 from .rate_exchange import RateExchange
 from .exchangerate_api import ExchangeRateAPI
 from .openexchangerates import OpenExchangeRates
+from .oanda import Oanda
 
-__all__ = ['Yahoo', 'RateExchange', 'ExchangeRateAPI', 'OpenExchangeRates']
+__all__ = ['Yahoo', 'RateExchange', 'ExchangeRateAPI', 'OpenExchangeRates',
+           'Oanda']
