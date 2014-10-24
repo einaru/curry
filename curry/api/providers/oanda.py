@@ -76,25 +76,6 @@ class Oanda(APIProvider):
 
         return p_rate * (1 / t_rate)
 
-    def parse_html(self, html):
-        soup = BeautifulSoup(html)
-        content = soup.find(id='content_section').find('table').find('font')
-
-        f = io.StringIO(content.text)
-        reader = csv.reader(f)
-        data = [row for row in reader if len(row) > 0][1:]
-
-        assert len(data) > 0
-        assert len(data[0]) == 4
-
-        rates, inverse_rates = {}, {}
-        for row in data:
-            name, code, inverse, rate = row
-            rates[code] = float(rate)
-            inverse_rates[code] = float(inverse)
-
-        return rates, inverse_rates
-
     def save_cache(self, rates, inverse_rates):
         self.cache.update({
             'base': self.base_currency,
@@ -123,10 +104,36 @@ class Oanda(APIProvider):
             self.dump_http_response(r)
 
             if r.status_code == 200:
-                data = self.parse_html(r.content)
+                data = self._parse_html(r.content)
                 self.save_cache(*data)
             else:
                 raise APIError('Unable to fetch data.', self.id_)
+
+    def _parse_html(self, html):
+        """Parse the return HTML document for exchange rate data.
+
+        :param html: the HTML content to parse.
+
+        :returns: two dictionaries (rates and inverse_rates), which
+            contains exchange rates on success, or is empty otherwise.
+        """
+        soup = BeautifulSoup(html)
+        content = soup.find(id='content_section').find('table').find('font')
+
+        f = io.StringIO(content.text)
+        reader = csv.reader(f)
+        data = [row for row in reader if len(row) > 0][1:]
+
+        assert len(data) > 0
+        assert len(data[0]) == 4
+
+        rates, inverse_rates = {}, {}
+        for row in data:
+            name, code, inverse, rate = row
+            rates[code] = float(rate)
+            inverse_rates[code] = float(inverse)
+
+        return rates, inverse_rates
 
 
 register_api_provider(Oanda.id_, Oanda)
