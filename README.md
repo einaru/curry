@@ -27,8 +27,8 @@ Curry is able to get exchange rates from the following API providers:
 ## Install
 
 ``` bash
-$ curl -L  http://github.com/einaru/curry/archive/v0.3.1.tar.gz | tar xz
-$ cd curry-v0.3.1
+$ curl -L  http://github.com/einaru/curry/archive/v0.3.2.tar.gz | tar xz
+$ cd curry-v0.3.2
 $ sudo python3 setup.py install
 ```
 

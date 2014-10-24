@@ -1,6 +1,6 @@
 pkgname='python-curry'
 _pkgname='curry'
-pkgver='0.3.1'
+pkgver='0.3.2'
 pkgrel=1
 pkgdesc='A command-line currency converter'
 arch=('any')
@@ -13,7 +13,7 @@ conflicts=('curry')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/einaru/$_pkgname/archive/v$pkgver.tar.gz")
 options=(!emptydirs)
 # update md5sums with `updpkgsums`
-md5sums=('3fb207df788740520aa602ad62648106')
+md5sums=('SKIP')
 
 package() {
 	cd "$srcdir/$_pkgname-$pkgver"
