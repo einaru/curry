@@ -65,7 +65,7 @@ bump_version() {
 	new=$2
 
 	sed -i "s/version = '$old'/version = '$new'/g" $VERSION_FILE
-	#sed -i "s/pkgver='$old'/pkgver='$new'/g" $PKGBUILD_FILE
+	sed -i "s/pkgver='$old'/pkgver='$new'/g" $PKGBUILD_FILE
 }
 
 # Setup some initial variables
@@ -73,7 +73,7 @@ GITROOT=$(git rev-parse --show-toplevel)
 cd $GITROOT
 
 VERSION_FILE="./curry/__init__.py"
-#PKGBUILD_FILE="./arch/PKGBUILD"
+PKGBUILD_FILE="./arch/PKGBUILD"
 OLD_VERSION=$(cat $VERSION_FILE | grep 'version' | sed 's/[^0-9.]//g')
 
 # Check for optional arguments
@@ -96,7 +96,7 @@ case "$result" in
 	(9)
 		bump_version $OLD_VERSION $NEW_VERSION
 		echo "New version is '$NEW_VERSION'"
-		git add $VERSION_FILE #$PKGBUILD_FILE
+		#git add $VERSION_FILE $PKGBUILD_FILE
 		echo "Now run: git commit -m 'Bumped version to v$NEW_VERSION'"
 		result=0
 esac
