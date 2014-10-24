@@ -36,6 +36,7 @@ setup(
     packages=find_packages(exclude=[]),
     install_requires=[
         'requests',  # 2.4.3
+        'beautifulsoup4',
     ],
     data_files=[],
     entry_points={

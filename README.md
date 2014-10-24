@@ -2,18 +2,41 @@
 
 A command-line currency converter.
 
+Curry is able to get exchange rates from the following API providers:
+
+| Name                 | id                        |
+| -------------------  | ------------------------- |
+| Yahoo                | finance.yahoo.com         |
+| Exchang Rate API¹    | exchangerate-api.com      |
+| Rate Exchange        | rate-exchange.appspot.com |
+| Open Exchange Rates¹ | openexchangerates.org     |
+| Oanda                | oanda.com                 |
+
+<small>
+¹ requires an external `api key`
+</small>
+
 
 ## Dependencies
 
 - [Python](https://www.python.org) 3.x
 - [Python-Requests](http://docs.python-requests.org/en/latest/)
+- [BeautifulSoup](http://www.crummy.com/software/BeautifulSoup/) 4
 
 
 ## Install
 
 ``` bash
-$ curl -L  http://github.com/einaru/curry/archive/v0.3.tar.gz | tar xv
-$ cd curry-v0.3
+$ curl -L  http://github.com/einaru/curry/archive/v0.3.1.tar.gz | tar xz
+$ cd curry-v0.3.1
+$ sudo python3 setup.py install
+```
+
+or
+
+```bash
+$ git clone https://github.com/einaru/curry
+$ cd curry
 $ sudo python3 setup.py install
 ```
 
