@@ -56,6 +56,8 @@ class RateExchange(APIProvider):
                 log.error(ve)
                 raise APIError('Unable to convert exchange rate to float')
 
+            self.save_cache(transaction, payment, rate)
+
         return rate
 
 
