@@ -14,6 +14,8 @@ import logging
 import time
 from requests.exceptions import RequestException
 
+from curry.config import config
+
 log = logging.getLogger(__name__)
 
 Providers = {}
