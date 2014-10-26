@@ -21,19 +21,37 @@ log = logging.getLogger(__name__)
 Providers = {}
 """A dictionary containing all available API providers."""
 
+START_ENUMERATE_ON = 1
+
 
 def register_api_provider(api, cls, requires=[]):
     Providers[api] = {'class': cls, 'requires': requires}
 
 
 def list_api_providers():
+    """Print an enumerated sorted list of available API providers."""
     print('Available API providers:')
-    for api in Providers.keys():
-        output = '  {}'.format(api)
+    for id_, api in enumerate(sorted(Providers.keys()), START_ENUMERATE_ON):
+        output = '  {:>3} {}'.format(id_, api)
         requires = ', '.join(Providers[api].get('requires', []))
         if len(requires) > 0:
             output = '{} (requires: {})'.format(output, requires)
         print(output)
+
+
+def get_api_provider(api):
+    """Get a registered API provider either by the registred API name,
+    or by the enumerated id shown when `list_api_providers` is called.
+    """
+    try:
+        api = sorted(Providers.keys())[int(api) - START_ENUMERATE_ON]
+    except ValueError:
+        pass
+
+    if api not in Providers:
+        raise APIError('Unknown API provider: {}'.format(api))
+
+    return Providers[api]
 
 
 def cache_has_expired(timestamp):
@@ -62,13 +80,13 @@ class Provider:
     def use_api(self, **kwargs):
         assert 'api' in kwargs
         api = kwargs.pop('api')
-        if api not in Providers:
-            raise APIError('Unknown API provider: {}'.format(api))
+        provider = get_api_provider(api)
 
         if self.api:
-            log.info('Switching API provider: {} -> {}'.format(self.api, api))
+            log.info('Switching API provider: {} -> {}'
+                     .format(self.api.id_, api))
 
-        self.api = Providers[api]['class'](**kwargs)
+        self.api = provider['class'](**kwargs)
 
     def get_exchange_rate(self, transaction, payment):
         """Get the exchange rate for a currency pair (transaction
