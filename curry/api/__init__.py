@@ -24,8 +24,8 @@ Providers = {}
 START_ENUMERATE_ON = 1
 
 
-def register_api_provider(api, cls, requires=[]):
-    Providers[api] = {'class': cls, 'requires': requires}
+def register_api_provider(api, klass, requires=[]):
+    Providers[api] = {'klass': klass, 'requires': requires}
 
 
 def list_api_providers():
@@ -86,7 +86,7 @@ class Provider:
             log.info('Switching API provider: {} -> {}'
                      .format(self.api.id_, api))
 
-        self.api = provider['class'](**kwargs)
+        self.api = provider['klass'](**kwargs)
 
     def get_exchange_rate(self, transaction, payment):
         """Get the exchange rate for a currency pair (transaction
