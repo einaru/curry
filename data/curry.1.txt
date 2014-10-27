@@ -1,0 +1,101 @@
+CURRY(1)
+========
+:doctype: manpage
+
+NAME
+----
+curry - The command-line currency converter
+
+SYNOPSIS
+--------
+*curry* ['options'] 'from' 'to' ['amount' ['amount...']]
+
+
+DESCRIPTION
+-----------
+*Curry* is a command-line currency converter, with suport for getting exchange
+rates from multiple API providers, including:
+
+- rate-exchange.appspot.com
+- oanda.com
+- finance.yahoo.com
+- openexchangerates.org
+- exchangerate-api.com
+
+The positional arguments 'from' and 'to' are required, and defines the
+transaction currency and the payment currency respectively. Additionaly you can
+provide one or more 'amount' arguments, which will be summed together.
+
+OPTIONS
+-------
+*-h, --help*::
+	Show a help message and then exit.
+
+*--version*::
+	Show the application version and then exit.
+
+*-l, --list*::
+	Show a list of available API providers and then exit.
+
+*-a, --api* 'API'::
+	Get exchange rates from a spesific API provider. Use *--list* to see a
+	list of available API providers.
+
+*-k, --key* 'KEY'::
+	Provide the API-key to use with API providers that require this. It is a
+	good idea to also use the *--save* flag to save this API-key in the config
+	file.
+
+*-s, --save*::
+	Save current command-line options to the config file.
+
+*-r, --refresh-cache*::
+	Force a cache refresh even when the cache timeout is not reached.
+
+*-v, --verbose*::
+	Increase logging verbosity. For each *-v* flag, more messages are logged
+	the console.  Use *-v* to enable 'info' messages, and *-vv* to enable
+	'debug' messages. Without the flag, only 'errors' and 'warnings' are
+	displayed.
+
+CONFIGURATION
+-------------
+The main configuration file is *~/.config/curry/config.ini*. The default
+settings look like this:
+
+	[curry]
+	api = finance.yahoo.com
+	cache_timeout = 43200
+
+where 'api' points to the API provider to use, if no *--api* flag is provided,
+and 'cache_timeout' defines how long a cache should be kept before requesting
+new data from the API provider. This value should be in seconds.
+
+FILES
+-----
+*~/.cache/curry/*::
+	Cache directory.
+
+*~/.config/curry/*::
+	Configuration directory.
+
+*~/.config/curry/config.ini*::
+	Main configuration file.
+
+REPORTING BUGS
+--------------
+Bugs, feature requests and other issues can be filled at
+'<https://github.com/einaru/curry/issues>'
+
+AUTHOR
+------
+*Curry* is written by Einar Uvsløkk <einar.uvslokk@gmail.com>
+
+RESOURCES
+---------
+Main web site: '<https://github.com/einaru/curry>'
+
+COPYING
+-------
+Copyright \(c) 2014 Einar Uvsløkk. Free use of this software is granted under
+the terms of the GNU General Public License (GPL) version 3 or later.
