@@ -10,6 +10,7 @@ N_LINES = 3
 with open(os.path.join(here, 'README.md')) as f:
     long_description = ''.join([next(f) for i in range(N_LINES)])
 
+
 setup(
     name=prog_name,
     version=version,
@@ -20,10 +21,8 @@ setup(
     author_email=author_email,
     license='GPLv3+',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
-        'Environment :: X11 Applications :: Gnome',
-        'Environment :: X11 Applications :: GTK',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)'
         'Operating System :: MacOSX',
         'Operating System :: POSIX',
@@ -38,7 +37,9 @@ setup(
         'requests',  # 2.4.3
         'beautifulsoup4',
     ],
-    data_files=[],
+    data_files=[
+        ('share/man/man1', ['data/curry.1']),
+    ],
     entry_points={
         'console_scripts': [
             'curry=curry.cli:main'

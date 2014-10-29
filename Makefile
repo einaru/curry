@@ -1,20 +1,24 @@
 ### Makefile for curry
 
 PYTHON = python3
-SETUP_PY_FLAGS = --optimize=1
-CLEANFILES = *.egg-info dist \
+MANPAGE = data/curry.1
+
+CLEANFILES = \
+			 *.egg-info \
+			 dist \
+			 build \
 			 `find curry -type d -name '__pycache__'` \
 			 arch/src \
 			 arch/pkg \
 			 arch/*.tar* \
 
-.PHONY: install dist clean
-
-install:
-	$(PYTHON) setup.py install $(SETUP_PY_FLAGS)
+.PHONY: dist manpage clean
 
 dist:
 	$(PYTHON) setup.py sdist
+
+manpage:
+	a2x -fmanpage -dmanpage $(MANPAGE).txt
 
 clean:
 	rm -rf $(CLEANFILES)
