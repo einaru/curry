@@ -1,3 +1,4 @@
 include DESCRIPTION.md
 include LICENSE
 include README.md
+include data/curry.1

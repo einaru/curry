@@ -3,8 +3,10 @@
 PYTHON = python3
 MANPAGE = data/curry.1
 
-CLEANFILES = *.egg-info \
+CLEANFILES = \
+			 *.egg-info \
 			 dist \
+			 build \
 			 `find curry -type d -name '__pycache__'` \
 			 arch/src \
 			 arch/pkg \
