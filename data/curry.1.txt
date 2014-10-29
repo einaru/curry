@@ -1,6 +1,9 @@
 CURRY(1)
 ========
 :doctype: manpage
+:man source: Curry
+:man version: 0.3.2
+:man manual: Curry Manual
 
 NAME
 ----
@@ -69,7 +72,8 @@ settings look like this:
 
 where 'api' points to the API provider to use, if no *--api* flag is provided,
 and 'cache_timeout' defines how long a cache should be kept before requesting
-new data from the API provider. This value should be in seconds.
+new data from the API provider. This value should be in seconds, e.g. 12 hours
+= 60 seconds * 60 minutes * 12 hours = 43200 seconds.
 
 FILES
 -----
