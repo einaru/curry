@@ -30,6 +30,7 @@ def parse_command_line(argv, **defaults):
     parser = argparse.ArgumentParser(prog=prog_name,
                                      description=description)
 
+    # Positional arguments
     parser.add_argument('_from', metavar='from',
                         help='the transaction currency')
     parser.add_argument('to', help='the payment currency')
@@ -37,26 +38,31 @@ def parse_command_line(argv, **defaults):
                         help='the amount to convert, if more than one amount '
                              'is given, the sum is used (default: 1)')
 
-    default_api = defaults.get('api')
-    parser.add_argument('-a', '--api', default=default_api,
-                        help='get exchange rates from a given API provider')
-    parser.add_argument('-k', '--api-key', metavar='KEY',
-                        help='use an API-key (required by some API '
-                             'providers!)')
-    parser.add_argument('-l', '--list', action=ListAPIProviders, nargs=0,
-                        help='show a list of available provider API\'s')
-
-    # TODO:2014-10-21:einar: maybe save on default and provide --no-save flag?
-    parser.add_argument('-s', '--save', action='store_true',
-                        help='save config settings on exit')
-    parser.add_argument('--refresh-cache', action='store_true',
-                        help='force a cache refresh')
+    # Optional arguments that produce some info and then exit
     parser.add_argument('--version', action='version',
                         version='%(prog)s v{}'.format(version),
                         help='show the application version and exit')
+    parser.add_argument('-l', '--list', action=ListAPIProviders, nargs=0,
+                        help='show a list of available API providers')
+
+    # Other optional arguments
+    default_api = defaults.get('api')
+    parser.add_argument('-a', '--api', default=default_api,
+                        help='get exchange rates from a spesific API provider')
+    parser.add_argument('-k', '--key', metavar='KEY', dest='api_key',
+                        help='provide the API-key to use with API providers '
+                        'that requires one')
+    # TODO:2014-10-21:einar: maybe save on default and provide --no-save flag?
+    parser.add_argument('-s', '--save', action='store_true',
+                        help='save current command-line options to the config '
+                        'file')
+    parser.add_argument('-r', '--refresh-cache', action='store_true',
+                        help='force a cache refresh even when the cache '
+                        'timeout is not reached')
     parser.add_argument('-v', '--verbose', dest='verbose_count',
                         action='count', default=0,
-                        help='increase log verbosity')
+                        help='increase logging verbosity, use -v to enable '
+                        '"info" messages, and -vv to enable "debug" messages')
 
     args = parser.parse_args(argv[1:])
 

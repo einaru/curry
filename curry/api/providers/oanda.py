@@ -50,7 +50,6 @@ currencies = [
 
 class Oanda(APIProvider):
     id_ = 'oanda.com'
-    base_currency = 'USD'
     url = 'http://www.oanda.com/currency/table?date=10/24/14&' \
           'date_fmt=us&exch={}&sel_list={}&value=1&format=CSV&redirected=1'
 
@@ -78,7 +77,7 @@ class Oanda(APIProvider):
 
     def save_cache(self, rates, inverse_rates):
         self.cache.update({
-            'base': self.base_currency,
+            'base': base_currency,
             'rates': rates,
             'inverse_rates': inverse_rates,
             'timestamp': time.time()
@@ -97,7 +96,7 @@ class Oanda(APIProvider):
         timestamp = self.cache.get('timestamp')
         has_expired = not timestamp or cache_has_expired(timestamp)
         if not self.cache or self.refresh_cache or has_expired:
-            url = self.url.format(self.base_currency, '_'.join(currencies))
+            url = self.url.format(base_currency, '_'.join(currencies))
             log.debug('Request url: {}'.format(url))
 
             r = requests.get(url)

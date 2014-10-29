@@ -1,12 +1,13 @@
+# Maintainer: Einar Uvsløk <einar.uvslokk@gmail.com>
 pkgname='python-curry'
 _pkgname='curry'
-pkgver='0.3.2'
+pkgver='0.4'
 pkgrel=1
 pkgdesc='A command-line currency converter'
 arch=('any')
 url='https://github.com/einaru/curry'
 license=('GPL')
-depends=('python-requests' 'python-beautifulsoup4')
+depends=('python' 'python-requests' 'python-beautifulsoup4')
 makedepends=('python-setuptools')
 provides=('curry')
 conflicts=('curry')
