@@ -69,7 +69,7 @@ class Config:
             return val
         v = self.config[section].get(key, val)
         try:
-            return float(v)
+            return int(v)
         except:
             return v
 
