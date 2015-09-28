@@ -102,6 +102,8 @@ class Oanda(APIProvider):
         timestamp = self.cache.get('timestamp')
         has_expired = not timestamp or cache_has_expired(timestamp)
         if not self.cache or self.refresh_cache or has_expired:
+            msg = 'Querying {} is slow. This might take a while...'
+            log.warning(msg.format(self.id_))
             url = self.url.format(base_currency, '_'.join(currencies))
             log.debug('Request url: {}'.format(url))
 
