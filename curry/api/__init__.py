@@ -28,12 +28,20 @@ def register_api_provider(api, klass, requires=[]):
     Providers[api] = {'klass': klass, 'requires': requires}
 
 
+def _emphasis(text):
+    """Wrap text in terminal escape codes for bold text."""
+    return '\033[1m{}\033[0m'.format(text)
+
+
 def list_api_providers():
     """Print an enumerated sorted list of available API providers."""
     print('Available API providers:')
+    default_api = config.get('api')
     for id_, api in enumerate(sorted(Providers.keys()), START_ENUMERATE_ON):
-        output = '  {:>3} {}'.format(id_, api)
         requires = ', '.join(Providers[api].get('requires', []))
+        if api == default_api or id_ == default_api:
+            api = _emphasis(api + '*')
+        output = '{:>4} {}'.format('({})'.format(id_), api)
         if len(requires) > 0:
             output = '{} (requires: {})'.format(output, requires)
         print(output)

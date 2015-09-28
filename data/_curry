@@ -1,0 +1,40 @@
+#compdef curry
+
+local currencies providers args
+
+# TODO oanda.com (and yahoo?) supports more currencies than these.
+# Currency codes supported by exchangerate-api.com
+# See: https://www.exchangerate-api.com/supported-currencies
+currencies=(
+	'AED' 'ANG' 'ARS' 'AUD' 'BBD' 'BDT' 'BGN' 'BHD' 'BRL' 'BSD' 'CAD' 'CHF'
+	'CLP' 'CNY' 'COP' 'CZK' 'DKK' 'EGP' 'EUR' 'FJD' 'GBP' 'GHS' 'GTQ' 'HKD'
+	'HNL' 'HRK' 'HUF' 'IDR' 'ILS' 'INR' 'IRR' 'ISK' 'JMD' 'JOD' 'JPY' 'KES'
+	'KRW' 'KWD' 'LKR' 'MAD' 'MMK' 'MUR' 'MXN' 'MYR' 'NGN' 'NOK' 'NZD' 'OMR'
+	'PAB' 'PEN' 'PGK' 'PHP' 'PKR' 'PLN' 'QAR' 'RON' 'RSD' 'RUB' 'SAR' 'SCR'
+	'SEK' 'SGD' 'THB' 'TND' 'TRY' 'TTD' 'TWD' 'TWD' 'USD' 'VEF' 'VND' 'XAF'
+	'XCD' 'XOF' 'XPF' 'ZAR' 'ZMW'
+)
+
+providers=(
+	exchangerate-api.com
+	finance.yahoo.com
+	oanda.com
+	openexchangerates.org
+	rate-exchange.appspot.com
+)
+
+args=(
+	'(-a --api)'{-a,--api=}'[get exchange rates form a spesific API provider]::providers:($providers)'
+	'(-k --key)'{-k,--key=}'[provide an API-key to use with providers that requires one]'
+	'(-l --list)'{-l,--list}'[show a list of supported providers]'
+	'(-s --save)'{-s,--save}'[save current command-line options to the config file]'
+	'(-r --refresh)'{-r,--refresh}'[force a cache refresh even when the cache timeout is not reached]'
+	'(-v --verbose)'{-v+,--verbose}'[enable info messages]'
+	'-vv[enable debug messages]'
+	'(-h --help)'{-h,--help}'[show help message and exit]'
+	'--version[show the version number and exit]'
+	'1:transaction currency:($currencies)'
+	'2:payment currency:($currencies)'
+)
+
+_arguments -s -S $args

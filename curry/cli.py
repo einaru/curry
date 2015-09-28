@@ -41,16 +41,16 @@ def parse_command_line(argv, **defaults):
     # Optional arguments that produce some info and then exit
     parser.add_argument('--version', action='version',
                         version='%(prog)s v{}'.format(version),
-                        help='show the application version and exit')
+                        help='show the version number and exit')
     parser.add_argument('-l', '--list', action=ListAPIProviders, nargs=0,
-                        help='show a list of available API providers')
+                        help='show a list of available API providers and exit')
 
     # Other optional arguments
     default_api = defaults.get('api')
     parser.add_argument('-a', '--api', default=default_api,
                         help='get exchange rates from a spesific API provider')
     parser.add_argument('-k', '--key', metavar='KEY', dest='api_key',
-                        help='provide the API-key to use with API providers '
+                        help='provide an API-key to use with API providers '
                         'that requires one')
     # TODO:2014-10-21:einar: maybe save on default and provide --no-save flag?
     parser.add_argument('-s', '--save', action='store_true',
