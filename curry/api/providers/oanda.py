@@ -14,6 +14,7 @@ import time
 import json
 import logging
 import requests
+import importlib
 
 from bs4 import BeautifulSoup
 
@@ -56,6 +57,11 @@ class Oanda(APIProvider):
     def __init__(self, **kwargs):
         APIProvider.__init__(self, **kwargs)
         self.cache_file = get_cache_file(self.id_)
+        # Use lxml as the BeautifulSoup parser if it's installed.
+        if importlib.find_loader('lxml'):
+            self._parser = 'lxml'
+        else:
+            self._parser = 'html.parser'
 
     def get_exchange_rate(self, transaction, payment):
         self.load_cache()
@@ -116,7 +122,7 @@ class Oanda(APIProvider):
         :returns: two dictionaries (rates and inverse_rates), which
             contains exchange rates on success, or is empty otherwise.
         """
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, self._parser)
         content = soup.find(id='content_section').find('table').find('font')
 
         f = io.StringIO(content.text)
