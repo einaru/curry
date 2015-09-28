@@ -13,7 +13,6 @@ SYNOPSIS
 --------
 *curry* ['options'] 'from' 'to' ['amount' ['amount...']]
 
-
 DESCRIPTION
 -----------
 *Curry* is a command-line currency converter, with suport for getting exchange
@@ -35,7 +34,7 @@ OPTIONS
 	Show a help message and then exit.
 
 *--version*::
-	Show the application version and then exit.
+	Show the version number and then exit.
 
 *-l, --list*::
 	Show a list of available API providers and then exit.
@@ -45,9 +44,9 @@ OPTIONS
 	list of available API providers.
 
 *-k, --key* 'KEY'::
-	Provide the API-key to use with API providers that require this. It is a
-	good idea to also use the *--save* flag to save this API-key in the config
-	file.
+	Provide an API-key to use with API providers that requires one. It's a good
+	idea to combine this with the *--save* flag. This ensures that the API-key
+	is saved in the config file.
 
 *-s, --save*::
 	Save current command-line options to the config file.
@@ -56,10 +55,9 @@ OPTIONS
 	Force a cache refresh even when the cache timeout is not reached.
 
 *-v, --verbose*::
-	Increase logging verbosity. For each *-v* flag, more messages are logged
-	the console.  Use *-v* to enable 'info' messages, and *-vv* to enable
-	'debug' messages. Without the flag, only 'errors' and 'warnings' are
-	displayed.
+	Increase logging verbosity. For each *-v* flag, more messages are logged to
+	the console. Use *-v* to enable 'info' messages, and *-vv* to enable 'debug'
+	messages. Without the flag, only 'errors' and 'warnings' are shown.
 
 CONFIGURATION
 -------------
