@@ -1,7 +1,9 @@
 # Source code
 *.pyc
+data/curry.1
 
 # Build directories
+*.egg-info
 dist/
 
 # Packaging
