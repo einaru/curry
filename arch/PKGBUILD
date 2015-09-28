@@ -16,6 +16,11 @@ options=(!emptydirs)
 # update md5sums with `updpkgsums`
 md5sums=('SKIP')
 
+build() {
+	cd "$srcdir/$_pkgname-$pkgver"
+	make
+}
+
 package() {
 	cd "$srcdir/$_pkgname-$pkgver"
 	python3 setup.py install --prefix=/usr --root="$pkgdir/" --optimize=1

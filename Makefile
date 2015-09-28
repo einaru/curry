@@ -19,14 +19,6 @@ CLEANDIRS = \
 	arch/*.tar* \
 	$(NULL)
 
-all: help
-
-help:
-	@echo -e "Available targets:\n"
-	@echo "  install install $(PROGRAM) on the system"
-	@echo "  dist    make a tarball for distribution"
-	@echo "  clean   cleanup generated files"
-
 $(MANPAGE): $(MANPAGE).txt
 	a2x -fmanpage $<
 
@@ -40,4 +32,10 @@ clean:
 	rm -f $(CLEANFILES)
 	rm -rf $(CLEANDIRS)
 
-.PHONY: all help install dist clean
+help:
+	@echo -e "Available targets:\n"
+	@echo "  install install $(PROGRAM) on the system"
+	@echo "  dist    make a tarball for distribution"
+	@echo "  clean   cleanup generated files"
+
+.PHONY: help install dist clean
