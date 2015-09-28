@@ -39,6 +39,7 @@ setup(
     ],
     data_files=[
         ('share/man/man1', ['data/curry.1']),
+        ('share/zsh/site-functions', ['data/_curry']),
     ],
     entry_points={
         'console_scripts': [
